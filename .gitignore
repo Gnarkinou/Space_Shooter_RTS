@@ -1,0 +1,10 @@
+# 1. Ignore absolutely everything in the directory
+*
+
+# 2. Do not ignore folders themselves (otherwise Git can't look inside them)
+!*/
+
+# 3. Explicitly allow your source files and text files
+!.gitignore
+!*.odin
+!*.txt
