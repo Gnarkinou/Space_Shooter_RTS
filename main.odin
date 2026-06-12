@@ -29,6 +29,20 @@ Player :: struct {
 	max_life:        int,
 	shield:          int,
 	alive:           bool,
+	weapon:          Weapon,
+}
+
+Weapon :: struct {
+	name:          string,
+	speed:         f32,
+	acceleration:  f32,
+	alive:         bool,
+	dmg_type:      string,
+	dmg:           int,
+	fire_rate:     int,
+	coordinates:   [2]f32,
+	target:        [2]f32,
+	follow_target: bool,
 }
 
 main :: proc() {
@@ -43,12 +57,26 @@ main :: proc() {
 	game_state.player = Player {
 		coord           = {500.0, 500.0},
 		velocity        = {0.0, 0.0},
-		max_speed       = 600.0,
-		increment_speed = 200.0,
+		max_speed       = 700.0,
+		increment_speed = 250.0,
 		life            = 10,
 		max_life        = 10,
 		shield          = 1,
 		alive           = true,
+	}
+	game_state.player.weapon = Weapon {
+		name          = "small_laser",
+		speed         = 300,
+		acceleration  = 1,
+		alive         = true,
+		dmg_type      = "laser",
+		dmg           = 10,
+		coordinates   = {
+			game.state.player.coord[0] + PLAYER_SIZE_WIDTH / 2,
+			game.state.player.coord[1],
+		},
+		target        = {game.state.player.coord[0] + PLAYER_SIZE_WIDTH / 2, -100},
+		follow_target = false,
 	}
 
 	game_state.world = World {
