@@ -9,11 +9,13 @@ SCREEN_WIDTH :: 1280
 SCREEN_HEIGHT :: 1024
 
 Game_State :: struct {
-	window:  ^sdl.Window,
-	render:  ^sdl.Renderer,
-	running: bool,
-	player:  Player,
-	world:   World,
+	window:                  ^sdl.Window,
+	render:                  ^sdl.Renderer,
+	running:                 bool,
+	list_player_projectiles: []Projectile,
+	list_ennemy_projectiles: []Projectile,
+	player:                  Player,
+	world:                   World,
 }
 
 World :: struct {
@@ -55,6 +57,7 @@ Projectile :: struct {
 	coordinates:         [2]f32,
 	target:              [2]f32,
 	follow_target:       bool,
+	player_friendly:     bool,
 }
 
 main :: proc() {
@@ -84,10 +87,10 @@ main :: proc() {
 		dmg_type      = "laser",
 		dmg           = 10,
 		coordinates   = {
-			game.state.player.coord[0] + PLAYER_SIZE_WIDTH / 2,
-			game.state.player.coord[1],
+			game_state.player.coord[0] + PLAYER_SIZE_WIDTH / 2,
+			game_state.player.coord[1],
 		},
-		target        = {game.state.player.coord[0] + PLAYER_SIZE_WIDTH / 2, -100},
+		target        = {game_state.player.coord[0] + PLAYER_SIZE_WIDTH / 2, -100},
 		follow_target = false,
 	}
 
