@@ -43,6 +43,18 @@ Weapon :: struct {
 	coordinates:   [2]f32,
 	target:        [2]f32,
 	follow_target: bool,
+	auto_fire:     bool,
+}
+
+Projectile :: struct {
+	name:                string,
+	speed, acceleration: f32,
+	alive:               bool,
+	life:                int,
+	dmg:                 int,
+	coordinates:         [2]f32,
+	target:              [2]f32,
+	follow_target:       bool,
 }
 
 main :: proc() {
