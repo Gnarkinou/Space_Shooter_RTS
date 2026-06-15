@@ -4,6 +4,7 @@ import "core:fmt"
 
 list_player_projectiles: [dynamic]^Projectile
 list_ennemy_projectiles: [dynamic]^Projectile
+list_ennemy_ships: [dynamic]^Ennemy_ship
 
 World :: struct {
 	break_velocity: [2]f32,
@@ -53,13 +54,15 @@ Projectile :: struct {
 }
 
 Ennemy_ship :: struct {
-	coord:           [2]f32,
-	velocity:        [2]f32,
-	max_speed:       f32,
-	increment_speed: f32,
-	life:            int,
-	max_life:        int,
-	shield:          int,
-	alive:           bool,
-	weapon:          Weapon,
+	name:                             string,
+	coordinates:                      [2]f32, // location of the ship x,y
+	velocity:                         [2]int, // da speeeed
+	max_speed:                        int, // da max speeeed
+	acceleration:                     int,
+	life:                             int,
+	max_life:                         int,
+	shield:                           int,
+	alive:                            bool,
+	primary_weapon, secondary_weapon: Weapon,
+	width, height:                    int,
 }

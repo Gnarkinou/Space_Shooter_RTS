@@ -51,7 +51,7 @@ main :: proc() {
 		size             = {10, 20},
 		size_projectiles = {5, 10},
 		waiting_time     = 0,
-		auto_fire        = true, //Yeah I could remove this one and play only with the firing
+		//auto_fire        = true, //Yeah I could remove this one and play only with the firing
 		firing           = true,
 		coordinates      = &game_state.player.coord,
 		//target           = &game_state.player.coord,
@@ -80,6 +80,7 @@ main :: proc() {
 	defer sdl.DestroyRenderer(game_state.render)
 
 	last_time := sdl.GetTicks()
+	init_level1(&game_state)
 
 	for game_state.running {
 		current_time := sdl.GetTicks()
@@ -87,6 +88,7 @@ main :: proc() {
 		last_time = current_time
 		handle_events(&game_state)
 		update(&game_state, dt)
+		update_level1(&game_state, dt)
 		render(&game_state)
 	}
 }
@@ -100,6 +102,11 @@ update :: proc(state: ^Game_State, dt: f32) {
 
 	state.player.coord[0] += state.player.velocity[0] * dt
 	state.player.coord[1] += state.player.velocity[1] * dt
+
+	for ennemy in list_ennemy_ships {
+		ennemy.coordinates[1] += f32(ennemy.velocity[1]) * dt
+		ennemy.coordinates[0] += f32(ennemy.velocity[0]) * dt
+	}
 
 	player_in_screen: bool = true
 	if state.player.coord[0] < 0.0 {
@@ -176,6 +183,7 @@ update :: proc(state: ^Game_State, dt: f32) {
 		append(&list_player_projectiles, p)
 		state.player.primary_weapon.waiting_time = state.player.primary_weapon.fire_rate
 	}
+	update_level1(state, dt)
 }
 
 handle_events :: proc(state: ^Game_State) {
@@ -229,6 +237,21 @@ render :: proc(state: ^Game_State) {
 				h = projectile.size[1],
 			}
 			sdl.RenderFillRect(state.render, &projectile_rect)
+		}
+	}
+
+	sdl.SetRenderDrawColorFloat(state.render, 1.0, 0.8, 1.0, 1.0)
+	for ennemy in list_ennemy_ships {
+		if ennemy.alive {
+			ennemy_rect := sdl.FRect {
+				x = ennemy.coordinates[0],
+				y = ennemy.coordinates[1],
+				h = f32(ennemy.height),
+				w = f32(ennemy.width),
+			}
+			fmt.println(ennemy_rect.h)
+			sdl.SetRenderDrawColorFloat(state.render, 0.0, 0.8, 1.0, 1.0)
+			sdl.RenderFillRect(state.render, &ennemy_rect)
 		}
 	}
 	sdl.RenderPresent(state.render)
