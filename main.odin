@@ -102,13 +102,8 @@ update :: proc(state: ^Game_State, dt: f32) {
 
 	state.player.coord[0] += state.player.velocity[0] * dt
 	state.player.coord[1] += state.player.velocity[1] * dt
-
-	for ennemy in list_ennemy_ships {
-		ennemy.coordinates[1] += f32(ennemy.velocity[1]) * dt
-		ennemy.coordinates[0] += f32(ennemy.velocity[0]) * dt
-	}
-
 	player_in_screen: bool = true
+
 	if state.player.coord[0] < 0.0 {
 		player_in_screen = false
 		if state.player.velocity[0] < 0.0 do state.player.velocity[0] += 2 * state.player.increment_speed
@@ -249,7 +244,6 @@ render :: proc(state: ^Game_State) {
 				h = f32(ennemy.height),
 				w = f32(ennemy.width),
 			}
-			fmt.println(ennemy_rect.h)
 			sdl.SetRenderDrawColorFloat(state.render, 0.0, 0.8, 1.0, 1.0)
 			sdl.RenderFillRect(state.render, &ennemy_rect)
 		}
