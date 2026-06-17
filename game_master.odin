@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import sdl "vendor:sdl3"
 
 list_player_projectiles: [dynamic]^Projectile
 list_ennemy_projectiles: [dynamic]^Projectile
@@ -12,6 +13,7 @@ World :: struct {
 
 Player :: struct {
 	coord:                            [2]f32,
+	size:                             [2]f32,
 	velocity:                         [2]f32,
 	max_speed:                        f32,
 	increment_speed:                  f32,
@@ -64,5 +66,236 @@ Ennemy_ship :: struct {
 	shield:                           int,
 	alive:                            bool,
 	primary_weapon, secondary_weapon: Weapon,
-	width, height:                    int,
+	size:                             [2]int,
+}
+
+/*
+BLOCS FONCTIONS -- gestion de la physique pour touts niveaux
+   */
+
+render_level :: proc(state: ^Game_State) {
+	sdl.SetRenderDrawColorFloat(state.render, 1.0, 1.0, 0.0, 1.0)
+	for proj in list_ennemy_projectiles {
+		if proj.alive {
+			proj_rect := sdl.FRect {
+				x = proj.coordinates[0],
+				y = proj.coordinates[1],
+				w = proj.size[0],
+				h = proj.size[1],
+			}
+			sdl.RenderFillRect(state.render, &proj_rect)
+		}
+	}
+}
+
+update_level :: proc(state: ^Game_State, dt: f32) {
+	for i := 0; i < len(list_ennemy_ships); {
+		ennemy := list_ennemy_ships[i]
+		if ennemy.life <= 0 do ennemy.alive = false
+		if state.player.life <= 0 do state.player.alive = false
+
+		if !ennemy.alive || ennemy.coordinates[1] > SCREEN_HEIGHT + 100 {
+			fmt.println("Ennemy", ennemy.name, "destroyed !!!")
+			free(ennemy)
+			unordered_remove(&list_ennemy_ships, i)
+			continue
+		}
+		if ennemy.primary_weapon.firing && ennemy.primary_weapon.waiting_time <= 0 {
+			p := new(Projectile)
+			p.name = ennemy.primary_weapon.name
+			p.speed = ennemy.primary_weapon.speed
+			p.acceleration = ennemy.primary_weapon.acceleration
+			p.alive = true
+			p.life = 1
+			p.dmg = 20
+			p.size = ennemy.primary_weapon.size_projectiles
+			if p.follow_target do p.target = ennemy.primary_weapon.target^
+			else do p.target = ennemy.coordinates[0] + f32(ennemy.size[0]) / 2
+			p.coordinates = {
+				ennemy.primary_weapon.coordinates[0] + f32(ennemy.size[0]) / 2,
+				ennemy.primary_weapon.coordinates[1] + f32(ennemy.size[1]),
+			}
+			ennemy.primary_weapon.waiting_time = ennemy.primary_weapon.fire_rate
+			append(&list_ennemy_projectiles, p)
+		}
+		ennemy.coordinates[0] += f32(ennemy.velocity[0]) * dt
+		ennemy.coordinates[1] += f32(ennemy.velocity[1]) * dt
+		ennemy.primary_weapon.waiting_time -= 1
+
+		i += 1
+	}
+
+	for i := 0; i < len(list_ennemy_projectiles); {
+		proj := list_ennemy_projectiles[i]
+		if proj.life <= 0 do proj.alive = false
+		if !proj.alive {
+			free(proj)
+			unordered_remove(&list_ennemy_projectiles, i)
+			continue
+		}
+		if !proj.follow_target do proj.coordinates[0] += 0
+		else {
+			// Logic à implémenter pour le suivit de la cible
+			// Peut etre intéresant d'avoir la target comme un pointer
+			// On récupère ses coordonnées à chaque frame et on se déplace d'un delta en sa direction sur l'axe x
+			// Qque chose comme ça:
+			//projectile.coordinates[0]=(projectile.coordinates[0] - projectile.target[0]) * delta_déplacement
+		}
+		proj.coordinates[1] += proj.speed * dt
+		proj.speed = proj.speed * proj.acceleration
+		if proj.coordinates[1] > SCREEN_HEIGHT + 50 {
+			free(proj)
+			unordered_remove(&list_ennemy_projectiles, i)
+		} else {
+			i += 1
+		}
+	}
+}
+
+render_player :: proc(state: ^Game_State) {
+	if state.player.alive {
+		player_rect := sdl.FRect {
+			x = state.player.coord[0],
+			y = state.player.coord[1],
+			w = state.player.size[0],
+			h = state.player.size[1],
+		}
+		sdl.SetRenderDrawColorFloat(state.render, 0.0, 0.8, 1.0, 1.0)
+		sdl.RenderFillRect(state.render, &player_rect)
+	}
+}
+
+render_player_projectiles :: proc(state: ^Game_State) {
+	for projectile in list_player_projectiles {
+		if projectile.alive {
+			projectile_rect := sdl.FRect {
+				x = projectile.coordinates[0],
+				y = projectile.coordinates[1],
+				w = projectile.size[0],
+				h = projectile.size[1],
+			}
+			sdl.RenderFillRect(state.render, &projectile_rect)
+		}
+	}
+}
+
+render_ennemy_ships :: proc(state: ^Game_State, dt: f32) {
+	for ennemy in list_ennemy_ships {
+		if ennemy.alive {
+			ennemy_rect := sdl.FRect {
+				x = ennemy.coordinates[0],
+				y = ennemy.coordinates[1],
+				h = f32(ennemy.size[1]),
+				w = f32(ennemy.size[0]),
+			}
+			sdl.SetRenderDrawColorFloat(state.render, 0.0, 0.8, 1.0, 1.0)
+			sdl.RenderFillRect(state.render, &ennemy_rect)
+		}
+	}
+}
+
+update_player_projectiles :: proc(state: ^Game_State, dt: f32) {
+	for i := 0; i < len(list_player_projectiles); {
+		projectile := list_player_projectiles[i]
+		if projectile.life <= 0 do projectile.alive = false
+		if !projectile.alive {
+			free(projectile)
+			unordered_remove(&list_player_projectiles, i)
+			continue
+		}
+		if !projectile.follow_target do projectile.coordinates[0] += 0
+		else {
+			// Logic à implémenter pour le suivit de la cible
+			// Peut etre intéresant d'avoir la target comme un pointer
+			// On récupère ses coordonnées à chaque frame et on se déplace d'un delta en sa direction sur l'axe x
+			// Qque chose comme ça:
+			//projectile.coordinates[0]=(projectile.coordinates[0] - projectile.target[0]) * delta_déplacement
+		}
+		projectile.coordinates[1] -= projectile.speed * dt
+		projectile.speed = projectile.speed * projectile.acceleration
+
+		for enemy_projectile in list_ennemy_projectiles {
+			x_overlap :=
+				enemy_projectile.coordinates[0] < projectile.coordinates[0] + projectile.size[0] &&
+				enemy_projectile.coordinates[0] + enemy_projectile.size[0] >
+					projectile.coordinates[0]
+			y_overlap :=
+				enemy_projectile.coordinates[1] < projectile.coordinates[1] + projectile.size[1] &&
+				enemy_projectile.coordinates[1] + enemy_projectile.size[1] >
+					projectile.coordinates[1]
+			if x_overlap && y_overlap {
+				projectile.life -= enemy_projectile.dmg
+				enemy_projectile.life -= projectile.dmg
+				fmt.println("projectile-projectile collision detected !!!")
+			}
+			x_overlap =
+				enemy_projectile.coordinates[0] < state.player.coord[0] + state.player.size[0] &&
+				enemy_projectile.coordinates[0] + enemy_projectile.size[0] > state.player.coord[0]
+			y_overlap =
+				enemy_projectile.coordinates[1] < state.player.coord[1] + state.player.size[1] &&
+				enemy_projectile.coordinates[1] + enemy_projectile.size[1] > state.player.coord[1]
+			if x_overlap && y_overlap {
+				state.player.life -= enemy_projectile.dmg
+				enemy_projectile.life = 0
+				fmt.println("projectile-player collision detected !!!")
+			}
+		}
+
+		for enemy_ship in list_ennemy_ships {
+			x_overlap :=
+				enemy_ship.coordinates[0] < projectile.coordinates[0] + projectile.size[0] &&
+				enemy_ship.coordinates[0] + f32(enemy_ship.size[0]) > projectile.coordinates[0]
+			y_overlap :=
+				enemy_ship.coordinates[1] < projectile.coordinates[1] + projectile.size[1] &&
+				enemy_ship.coordinates[1] + f32(enemy_ship.size[1]) > projectile.coordinates[1]
+			if x_overlap && y_overlap {
+				projectile.life = 0
+				enemy_ship.life -= projectile.dmg
+				fmt.println("projectile-ennemy ship collision detected !!!")
+			}
+			x_overlap =
+				enemy_ship.coordinates[0] < state.player.coord[0] + state.player.size[0] &&
+				enemy_ship.coordinates[0] + f32(enemy_ship.size[0]) > state.player.coord[0]
+			y_overlap =
+				enemy_ship.coordinates[1] < state.player.coord[1] + state.player.size[1] &&
+				enemy_ship.coordinates[1] + f32(enemy_ship.size[1]) > state.player.coord[1]
+			if x_overlap && y_overlap {
+				enemy_ship.life = 0
+				//state.player.life -= 1
+				state.player.life = 0
+				fmt.println("ship-ennemy ship collision detected !!!")
+			}
+		}
+
+		if projectile.coordinates[1] < -100 {
+			free(projectile)
+			unordered_remove(&list_player_projectiles, i)
+		} else {
+			i += 1
+		}
+	}
+	state.player.primary_weapon.waiting_time -= 1
+
+	if state.player.alive &&
+	   state.player.primary_weapon.firing &&
+	   state.player.primary_weapon.waiting_time <= 0 {
+		p := new(Projectile)
+		p.name = state.player.primary_weapon.name
+		p.speed = state.player.primary_weapon.speed
+		p.acceleration = state.player.primary_weapon.acceleration
+		p.alive = true
+		p.life = 1
+		p.dmg = 20
+		p.size = state.player.primary_weapon.size_projectiles
+		p.follow_target = state.player.primary_weapon.follow_target
+		p.player_friendly = true
+		if p.follow_target do p.target = state.player.primary_weapon.target^
+		else do p.target = state.player.coord[0] + state.player.size[0] / 2
+		p.coordinates = {
+			state.player.primary_weapon.coordinates[0] + state.player.size[0] / 2,
+			state.player.primary_weapon.coordinates[1],
+		}
+		append(&list_player_projectiles, p)
+		state.player.primary_weapon.waiting_time = state.player.primary_weapon.fire_rate
+	}
 }
