@@ -3,18 +3,16 @@ package main
 import "core:fmt"
 import sdl "vendor:sdl3"
 
-//PLAYER_SIZE_WIDTH :: 30.0
-//PLAYER_SIZE_HEIGHT :: 50.0
 SCREEN_WIDTH :: 1280
 SCREEN_HEIGHT :: 1024
 
 Game_State :: struct {
-	window:    ^sdl.Window,
-	render:    ^sdl.Renderer,
-	running:   bool,
-	map_level: int,
-	player:    Player,
-	world:     World,
+	window:         ^sdl.Window,
+	render:         ^sdl.Renderer,
+	running, pause: bool,
+	map_level:      int,
+	player:         Player,
+	world:          World,
 }
 
 main :: proc() {
@@ -27,6 +25,7 @@ main :: proc() {
 	game_state := Game_State {
 		map_level = 1,
 		running   = true,
+		pause     = false,
 	}
 
 	game_state.player = Player {
@@ -38,6 +37,8 @@ main :: proc() {
 		life            = 10,
 		max_life        = 10,
 		shield          = 1,
+		max_shield      = 1,
+		reload_shield   = 20,
 		alive           = true,
 	}
 
@@ -47,10 +48,10 @@ main :: proc() {
 		acceleration     = 1.0,
 		alive            = true,
 		dmg_type         = "laser",
-		dmg              = 10,
+		dmg              = 1,
 		fire_rate        = 50,
-		size             = {10, 20},
-		size_projectiles = {65, 10},
+		//size             = {10, 20},
+		size_projectiles = {5, 10},
 		waiting_time     = 0,
 		firing           = true,
 		coordinates      = &game_state.player.coord,
@@ -127,6 +128,7 @@ update :: proc(state: ^Game_State, dt: f32) {
 		if state.player.velocity[1] > 0.0 do state.player.velocity[1] -= state.world.break_velocity[1]
 		else if state.player.velocity[1] < 0.0 do state.player.velocity[1] += state.world.break_velocity[1]
 	}
+	if !state.pause && sdl.GetTicks() % 1000 < 16 do update_player_status(state, dt)
 	update_player_projectiles(state, dt)
 	update_level(state, dt)
 }
