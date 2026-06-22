@@ -41,7 +41,7 @@ Weapon :: struct {
 
 Projectile :: struct {
 	name:                string,
-	speed:               f32,
+	velocity:            [2]f32,
 	acceleration:        f32,
 	alive:               bool,
 	life:                int,
@@ -158,7 +158,8 @@ update_level :: proc(state: ^Game_State, dt: f32) {
 		   ennemy.coordinates[1] >= 0 {
 			p := new(Projectile)
 			p.name = ennemy.primary_weapon.name
-			p.speed = ennemy.primary_weapon.speed
+			p.velocity[0] = ennemy.primary_weapon.speed
+			p.velocity[1] = ennemy.primary_weapon.speed
 			p.acceleration = ennemy.primary_weapon.acceleration
 			p.alive = true
 			p.life = 1
@@ -195,8 +196,7 @@ update_level :: proc(state: ^Game_State, dt: f32) {
 			// Qque chose comme ça:
 			//projectile.coordinates[0]=(projectile.coordinates[0] - projectile.target[0]) * delta_déplacement
 		}
-		proj.coordinates[1] += proj.speed * dt
-		proj.speed = proj.speed * proj.acceleration
+		proj.coordinates[1] += proj.velocity[1] * dt
 		if proj.coordinates[1] > SCREEN_HEIGHT + 50 {
 			free(proj)
 			unordered_remove(&list_ennemy_projectiles, i)
@@ -227,14 +227,19 @@ update_player_projectiles :: proc(state: ^Game_State, dt: f32) {
 		if !projectile.follow_target do projectile.coordinates[0] += 0
 		else {
 			fmt.println("Function to be implemented")
+			if projectile.target_alive^ == false && len(list_ennemy_ships) > 0 {
+				aim_shortest_target(projectile)
+			} else if !projectile.target_alive^ {
+				projectile.coordinates[0] += 0
+			}
 			// Logic à implémenter pour le suivit de la cible
 			// Peut etre intéresant d'avoir la target comme un pointer
 			// On récupère ses coordonnées à chaque frame et on se déplace d'un delta en sa direction sur l'axe x
 			// Qque chose comme ça:
 			//projectile.coordinates[0]=(projectile.coordinates[0] - projectile.target[0]) * delta_déplacement
 		}
-		projectile.coordinates[1] -= projectile.speed * dt
-		projectile.speed = projectile.speed * projectile.acceleration
+		projectile.coordinates[1] -= projectile.velocity[1] * dt
+		//projectile.speed = projectile.speed * projectile.acceleration
 
 		for enemy_projectile in list_ennemy_projectiles {
 			if !enemy_projectile.alive || enemy_projectile.life <= 0 do continue
@@ -309,7 +314,8 @@ update_player_projectiles :: proc(state: ^Game_State, dt: f32) {
 	   state.player.primary_weapon.waiting_time <= 0 {
 		p := new(Projectile)
 		p.name = state.player.primary_weapon.name
-		p.speed = state.player.primary_weapon.speed
+		p.velocity[1] = state.player.primary_weapon.speed
+		p.velocity[0] = state.player.primary_weapon.speed
 		p.acceleration = state.player.primary_weapon.acceleration
 		p.alive = true
 		p.life = state.player.primary_weapon.life
@@ -330,7 +336,8 @@ update_player_projectiles :: proc(state: ^Game_State, dt: f32) {
 	   state.player.secondary_weapon.number_ammo > 0 {
 		p := new(Projectile)
 		p.name = state.player.secondary_weapon.name
-		p.speed = state.player.secondary_weapon.speed
+		p.velocity[0] = state.player.secondary_weapon.speed
+		p.velocity[1] = -state.player.secondary_weapon.speed
 		p.acceleration = state.player.secondary_weapon.acceleration
 		p.alive = true
 		p.life = state.player.secondary_weapon.life
