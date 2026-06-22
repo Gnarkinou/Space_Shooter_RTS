@@ -13,7 +13,6 @@ basic_weapon := Weapon {
 	dmg_type         = "laser",
 	dmg              = 1,
 	fire_rate        = 50,
-	size             = {10, 20},
 	size_projectiles = {5, 10},
 	waiting_time     = 0,
 	firing           = true,
@@ -35,7 +34,6 @@ init_level1 :: proc(state: ^Game_State) {
 	ennemy_ship_test.alive = true
 	ennemy_ship_test.size = {40, 70}
 	ennemy_ship_test.primary_weapon = basic_weapon
-	ennemy_ship_test.primary_weapon.coordinates = &ennemy_ship_test.coordinates
 	append(&list_ennemy_ships, ennemy_ship_test)
 }
 
@@ -57,11 +55,9 @@ update_level1 :: proc(state: ^Game_State) {
 				es.alive = true
 				es.size = {40, 70}
 				es.primary_weapon = basic_weapon
-				es.primary_weapon.coordinates = &es.coordinates
 				append(&list_ennemy_ships, es)
 			}
 			wave_number += 1
 		}
 	}
-
 }

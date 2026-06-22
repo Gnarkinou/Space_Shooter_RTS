@@ -50,12 +50,27 @@ main :: proc() {
 		dmg_type         = "laser",
 		dmg              = 1,
 		fire_rate        = 50,
-		//size             = {10, 20},
+		life             = 1,
 		size_projectiles = {5, 10},
 		waiting_time     = 0,
 		firing           = true,
-		coordinates      = &game_state.player.coord,
 		follow_target    = false,
+	}
+
+	game_state.player.secondary_weapon = Weapon {
+		name             = "small_missile",
+		speed            = 200,
+		acceleration     = 1.5,
+		alive            = true,
+		dmg_type         = "explosion",
+		dmg              = 2,
+		number_ammo      = 5,
+		life             = 1,
+		fire_rate        = 70,
+		waiting_time     = 0,
+		size_projectiles = {10, 20},
+		follow_target    = true,
+		firing           = false,
 	}
 
 	game_state.world = World {
@@ -154,6 +169,9 @@ handle_events :: proc(state: ^Game_State) {
 			}
 			if event.key.scancode == .LEFT {
 				state.player.velocity[0] -= state.player.increment_speed
+			}
+			if event.key.scancode == .SPACE {
+				state.player.secondary_weapon.firing = true
 			}
 		}
 	}
