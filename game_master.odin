@@ -77,7 +77,7 @@ Ennemy_ship :: struct {
 BLOCS FONCTIONS -- gestion de la physique pour touts niveaux
    */
 
-render_level :: proc(state: ^Game_State) {
+render_projectiles :: proc(state: ^Game_State) {
 	sdl.SetRenderDrawColorFloat(state.render, 1.0, 1.0, 0.0, 1.0)
 	for proj in list_projectiles {
 		if proj.alive {
