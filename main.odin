@@ -46,7 +46,6 @@ main :: proc() {
 		name             = "small_laser",
 		speed            = 400,
 		acceleration     = 1.0,
-		alive            = true,
 		dmg_type         = "laser",
 		dmg              = 1,
 		fire_rate        = 50,
@@ -61,7 +60,6 @@ main :: proc() {
 		name             = "small_missile",
 		speed            = 200,
 		acceleration     = 1.5,
-		alive            = true,
 		dmg_type         = "explosion",
 		dmg              = 2,
 		number_ammo      = 5,
@@ -143,7 +141,8 @@ update :: proc(state: ^Game_State, dt: f32) {
 		if state.player.velocity[1] > 0.0 do state.player.velocity[1] -= state.world.break_velocity[1]
 		else if state.player.velocity[1] < 0.0 do state.player.velocity[1] += state.world.break_velocity[1]
 	}
-	if !state.pause && sdl.GetTicks() % 1000 < 16 do update_player_status(state, dt)
+	// Function call to be at 60FPS update
+	if !state.pause && sdl.GetTicks() % 1000 < 16 do update_player_status(state)
 	update_projectiles(state, dt)
 	update_level(state, dt)
 }
@@ -187,3 +186,4 @@ render :: proc(state: ^Game_State, dt: f32) {
 	render_ennemy_ships(state, dt)
 	sdl.RenderPresent(state.render)
 }
+mo
