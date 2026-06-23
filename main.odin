@@ -144,7 +144,7 @@ update :: proc(state: ^Game_State, dt: f32) {
 		else if state.player.velocity[1] < 0.0 do state.player.velocity[1] += state.world.break_velocity[1]
 	}
 	if !state.pause && sdl.GetTicks() % 1000 < 16 do update_player_status(state, dt)
-	update_player_projectiles(state, dt)
+	update_projectiles(state, dt)
 	update_level(state, dt)
 }
 
@@ -182,9 +182,8 @@ render :: proc(state: ^Game_State, dt: f32) {
 	sdl.RenderClear(state.render)
 	render_player(state)
 	sdl.SetRenderDrawColorFloat(state.render, 1.0, 1.0, 0.0, 1.0)
-	render_player_projectiles(state)
+	render_projectiles(state)
 	sdl.SetRenderDrawColorFloat(state.render, 1.0, 0.8, 1.0, 1.0)
 	render_ennemy_ships(state, dt)
-	render_level(state)
 	sdl.RenderPresent(state.render)
 }
