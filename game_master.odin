@@ -132,6 +132,8 @@ update_level :: proc(state: ^Game_State, dt: f32) {
 			continue
 		}
 
+  update_enemy_status(ennemy)
+
 		switch ennemy.pattern {
 		case "swipe":
 			if ennemy.coordinates[0] <= 0 ||
@@ -209,6 +211,7 @@ update_enemy_status :: proc(enemy: ^Ennemy_ship) {
 	fmt.println("Function to be implemented")
 	if enemy.max_shield == 0 do return
 	if enemy.shield < enemy.max_shield && enemy.reload_shield <= 0 {
+  enemy.shield+=1
 		enemy.reload_shield = enemy.max_reload_shield
 		fmt.println("Enemy shield reloaded to: ", enemy.shield)
 	} else if enemy.reload_shield > 0 do enemy.reload_shield -= 1
