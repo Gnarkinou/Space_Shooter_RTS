@@ -39,25 +39,25 @@ Weapon :: struct {
 }
 
 Projectile :: struct {
-	name:                string,
-	velocity:            [2]f32,
-	speed:               int,
-	acceleration:        f32,
-	max_speed:           f32,
-	alive:               bool,
-	life:                int,
-	dmg:                 ^int,
-	dmg_type:            ^string,
-	size:                [2]f32,
-	coordinates:         [2]f32,
-	target:              ^[2]f32,
-	target_alive:        ^bool,
-	target_follow_delta: ^int,
-	follow_target:       bool,
-	player_friendly:     bool,
+	name:                       string,
+	velocity:                   [2]f32,
+	speed:                      int,
+	acceleration:               f32,
+	max_speed:                  f32,
+	alive:                      bool,
+	life:                       int,
+	dmg:                        ^int,
+	dmg_type:                   ^string,
+	size:                       [2]f32,
+	coordinates:                [2]f32,
+	target_ship_id:             int,
+	target_follow_delta:        ^int,
+	follow_target, target_lost: bool,
+	player_friendly:            bool,
 }
 
 Ennemy_ship :: struct {
+	id:                                                   int,
 	name:                                                 string,
 	coordinates:                                          [2]f32,
 	velocity:                                             [2]int,
@@ -120,20 +120,11 @@ render_ennemy_ships :: proc(state: ^Game_State, dt: f32) {
 }
 
 update_level :: proc(state: ^Game_State, dt: f32) {
-	for i := 0; i < len(list_ennemy_ships); {
-		ennemy := list_ennemy_ships[i]
+	cleanup_list()
+	for ennemy in list_ennemy_ships {
 		if ennemy.life <= 0 do ennemy.alive = false
 		if state.player.life <= 0 do state.player.alive = false
-
-		if !ennemy.alive || ennemy.coordinates[1] > SCREEN_HEIGHT + 100 {
-			fmt.println("Ennemy", ennemy.name, "destroyed !!!")
-			free(ennemy)
-			unordered_remove(&list_ennemy_ships, i)
-			continue
-		}
-
-  update_enemy_status(ennemy)
-
+		if !state.pause && sdl.GetTicks() % 1000 < 16 do update_enemy_status(ennemy)
 		switch ennemy.pattern {
 		case "swipe":
 			if ennemy.coordinates[0] <= 0 ||
@@ -193,7 +184,6 @@ update_level :: proc(state: ^Game_State, dt: f32) {
 		ennemy.coordinates[0] += f32(ennemy.velocity[0]) * dt
 		ennemy.coordinates[1] += f32(ennemy.velocity[1]) * dt
 		ennemy.primary_weapon.waiting_time -= 1
-		i += 1
 	}
 	update_level1(state)
 }
@@ -208,60 +198,76 @@ update_player_status :: proc(state: ^Game_State) {
 }
 
 update_enemy_status :: proc(enemy: ^Ennemy_ship) {
-	fmt.println("Function to be implemented")
 	if enemy.max_shield == 0 do return
 	if enemy.shield < enemy.max_shield && enemy.reload_shield <= 0 {
-  enemy.shield+=1
+		enemy.shield += 1
 		enemy.reload_shield = enemy.max_reload_shield
 		fmt.println("Enemy shield reloaded to: ", enemy.shield)
 	} else if enemy.reload_shield > 0 do enemy.reload_shield -= 1
 }
 
 update_projectiles :: proc(state: ^Game_State, dt: f32) {
-	for i := 0; i < len(list_projectiles); {
+	for i := 0; i < len(list_projectiles); i += 1 {
 		projectile := list_projectiles[i]
-		if projectile.life <= 0 do projectile.alive = false
-		if !projectile.alive {
-			free(projectile)
-			unordered_remove(&list_projectiles, i)
-			continue
+		if projectile.coordinates[1] < -100 || projectile.coordinates[1] > SCREEN_HEIGHT + 100 {
+			projectile.life = 0
+			projectile.alive = false
+		} else if projectile.coordinates[0] > SCREEN_WIDTH + 50 ||
+		   projectile.coordinates[0] < -50 {
+			projectile.life = 0
+			projectile.alive = false
 		}
 
+		if projectile.life <= 0 do projectile.alive = false
 		if projectile.follow_target {
-			if !projectile.target_alive^ &&
-			   len(list_ennemy_ships) > 0 &&
-			   projectile.player_friendly {
+			if projectile.target_lost && len(list_ennemy_ships) > 0 && projectile.player_friendly {
+				fmt.println("Finding new target")
 				aim_shortest_target(projectile)
 				projectile_deplacements(projectile, state)
-			} else if !projectile.target_alive^ {
+			} else if projectile.target_lost {
 				if projectile.velocity[1] == 0 do projectile.velocity[1] -= f32(projectile.speed)
 
 			} else {
 				projectile_deplacements(projectile, state)
 			}
 		} else if projectile.player_friendly {
-			projectile.velocity[0] = f32(projectile.speed)
+			projectile.velocity[0] = 0
 			projectile.velocity[1] = -f32(projectile.speed)
 		} else {
-			projectile.velocity[0] = f32(projectile.speed)
+			projectile.velocity[0] = 0
 			projectile.velocity[1] = f32(projectile.speed)
 		}
-		projectile.coordinates[0] += projectile.velocity[0] * dt
-		projectile.coordinates[1] += projectile.velocity[1] * dt
+		projectile.coordinates += projectile.velocity * dt
 
 		if projectile.velocity[0] > 0 {
-			projectile.velocity[0] -= state.world.break_velocity[0]
+			projectile.velocity[0] -= state.world.break_velocity[0] * dt
 		} else if projectile.velocity[0] < 0 {
-			projectile.velocity[0] += state.world.break_velocity[0]
+			projectile.velocity[0] += state.world.break_velocity[0] * dt
 		}
 
 		if projectile.velocity[1] > 0 {
-			projectile.velocity[1] -= state.world.break_velocity[1]
+			projectile.velocity[1] -= state.world.break_velocity[1] * dt
 		} else if projectile.velocity[1] < 0 {
-			projectile.velocity[1] += state.world.break_velocity[1]
+			projectile.velocity[1] += state.world.break_velocity[1] * dt
 		}
 
-		for other_projectile in list_projectiles {
+		if !projectile.player_friendly && projectile.alive && projectile.life > 0 {
+			x_overlap :=
+				projectile.coordinates[0] < state.player.coord[0] + state.player.size[0] &&
+				projectile.coordinates[0] + projectile.size[0] > state.player.coord[0]
+			y_overlap :=
+				projectile.coordinates[1] < state.player.coord[1] + state.player.size[1] &&
+				projectile.coordinates[1] + projectile.size[1] > state.player.coord[1]
+			if x_overlap && y_overlap {
+				if state.player.shield <= 0 do state.player.life -= projectile.dmg^
+				else do state.player.shield -= projectile.dmg^
+				projectile.life = 0
+				fmt.println("enemy_projectile-player collision detected !!!")
+			}
+		}
+
+		for j := i + 1; j < len(list_projectiles); j += 1 {
+			other_projectile := list_projectiles[j]
 			if other_projectile.player_friendly == projectile.player_friendly do continue
 			if !other_projectile.alive || other_projectile.life <= 0 do continue
 			x_overlap :=
@@ -276,18 +282,6 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 				projectile.life -= other_projectile.dmg^
 				other_projectile.life -= projectile.dmg^
 				fmt.println("projectile-projectile collision detected !!!")
-			}
-			x_overlap =
-				other_projectile.coordinates[0] < state.player.coord[0] + state.player.size[0] &&
-				other_projectile.coordinates[0] + other_projectile.size[0] > state.player.coord[0]
-			y_overlap =
-				other_projectile.coordinates[1] < state.player.coord[1] + state.player.size[1] &&
-				other_projectile.coordinates[1] + other_projectile.size[1] > state.player.coord[1]
-			if x_overlap && y_overlap {
-				if state.player.shield <= 0 do state.player.life -= other_projectile.dmg^
-				else do state.player.shield -= other_projectile.dmg^
-				other_projectile.life = 0
-				fmt.println("enemy_projectile-player collision detected !!!")
 			}
 		}
 
@@ -317,18 +311,8 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 				fmt.println("ship-ennemy ship collision detected !!!")
 			}
 		}
-
-		if projectile.coordinates[1] < -100 || projectile.coordinates[1] > SCREEN_HEIGHT + 100 {
-			free(projectile)
-			unordered_remove(&list_projectiles, i)
-		} else if projectile.coordinates[0] > SCREEN_WIDTH + 50 ||
-		   projectile.coordinates[0] < -50 {
-			free(projectile)
-			unordered_remove(&list_projectiles, i)
-		} else {
-			i += 1
-		}
 	}
+
 	if state.player.primary_weapon.waiting_time > 0 do state.player.primary_weapon.waiting_time -= 1
 	else do state.player.primary_weapon.waiting_time = 0
 
@@ -367,9 +351,12 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 		p.alive = true
 		p.life = state.player.secondary_weapon.life
 		p.dmg = &state.player.secondary_weapon.dmg
+		p.max_speed = state.player.secondary_weapon.max_speed
 		p.size = state.player.secondary_weapon.size_projectiles
 		p.player_friendly = true
 		p.coordinates = {state.player.coord[0] + state.player.size[0] / 2, state.player.coord[1]}
+		p.target_follow_delta = &state.player.secondary_weapon.target_follow_delta
+		p.target_lost = true
 		p.follow_target = state.player.secondary_weapon.follow_target
 		if p.follow_target {
 			aim_shortest_target(p)
@@ -381,7 +368,36 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 	if state.player.secondary_weapon.firing do state.player.secondary_weapon.firing = false
 }
 
+cleanup_list :: proc() {
+	for i := len(list_projectiles) - 1; i >= 0; i -= 1 {
+		projectile := list_projectiles[i]
+		if !projectile.alive {
+			free(projectile)
+			unordered_remove(&list_projectiles, i)
+			continue
+		}
+		if projectile.coordinates[1] < -100 || projectile.coordinates[1] > SCREEN_HEIGHT + 100 {
+			free(projectile)
+			unordered_remove(&list_projectiles, i)
+		} else if projectile.coordinates[0] > SCREEN_WIDTH + 50 ||
+		   projectile.coordinates[0] < -50 {
+			free(projectile)
+			unordered_remove(&list_projectiles, i)
+		}
+	}
+	for i := 0; i < len(list_ennemy_ships); i += 1 {
+		ennemy := list_ennemy_ships[i]
+		if !ennemy.alive || ennemy.coordinates[1] > SCREEN_HEIGHT + 100 {
+			fmt.println("Ennemy", ennemy.name, "destroyed !!!")
+			free(ennemy)
+			unordered_remove(&list_ennemy_ships, i)
+			continue
+		}
+	}
+}
+
 aim_shortest_target :: proc(p: ^Projectile) {
+	fmt.println("Acquiring closest target !")
 	dist, dist_min: f32
 	dist_min = 0
 	for enemy in list_ennemy_ships {
@@ -390,35 +406,61 @@ aim_shortest_target :: proc(p: ^Projectile) {
 		dist = math.sqrt(dx * dx + dy * dy)
 		if dist_min == 0 || dist < dist_min {
 			dist_min = dist
-			p.target = &enemy.coordinates
-			p.target_alive = &enemy.alive
+			p.target_ship_id = enemy.id
+			p.target_lost = false
 		}
 	}
 }
 
 projectile_deplacements :: proc(p: ^Projectile, state: ^Game_State) {
-	if p.player_friendly {
-		if p.coordinates[0] > p.target[0] && p.velocity[0] < -p.max_speed {
-			p.velocity[0] -= f32(p.target_follow_delta^)
-		} else if p.coordinates[0] < p.target[0] && p.velocity[0] < p.max_speed {
-			p.velocity[0] += f32(p.target_follow_delta^)
-		}
-
-		if p.coordinates[1] < p.target[1] && p.velocity[1] < p.max_speed {
-			p.velocity[1] += f32(p.target_follow_delta^)
-		} else if p.coordinates[1] > p.target[1] && p.velocity[1] < -p.max_speed {
-			p.velocity[1] -= f32(p.target_follow_delta^)
-		}
+	if !p.follow_target do return
+	if p.target_follow_delta == nil {
+		fmt.println("Error initializing target_follow_delta for the projectile")
 		return
 	}
-	if p.coordinates[0] > state.player.coord[0] && p.velocity[0] < -p.max_speed {
+	if p.player_friendly {
+		target_ship: ^Ennemy_ship = nil
+		for i := 0; i < len(list_ennemy_ships); i += 1 {
+			if list_ennemy_ships[i].id == p.target_ship_id {
+				target_ship = list_ennemy_ships[i]
+				break
+			}
+		}
+
+		if target_ship == nil || !target_ship.alive || target_ship.life < 0 {
+			p.target_lost = true
+			fmt.println("target lost !")
+			return
+		}
+
+		target_center_x := target_ship.coordinates[0] + (f32(target_ship.size[0] / 2.0))
+		target_center_y := target_ship.coordinates[1] + (f32(target_ship.size[1] / 2.0))
+		buffer: f32 = 11.0
+		if p.coordinates[0] > target_center_x + buffer {
+			if p.velocity[0] > -p.max_speed do p.velocity[0] -= f32(p.target_follow_delta^)
+		} else if p.coordinates[0] < target_center_x - buffer {
+			if p.velocity[0] < p.max_speed do p.velocity[0] += f32(p.target_follow_delta^)
+		} //else do p.velocity *= 0.9
+
+		if p.coordinates[1] < target_center_y - buffer {
+			if p.velocity[1] < p.max_speed do p.velocity[1] += f32(p.target_follow_delta^)
+		} else if p.coordinates[1] > target_center_y + buffer {
+			if p.velocity[1] > -p.max_speed do p.velocity[1] -= f32(p.target_follow_delta^)
+		} //else do p.velocity *= 0.9
+		if p.velocity[0] > p.max_speed do p.velocity[0] = p.max_speed
+		if p.velocity[0] < -p.max_speed do p.velocity[0] = -p.max_speed
+		if p.velocity[1] > p.max_speed do p.velocity[1] = p.max_speed
+		if p.velocity[1] < -p.max_speed do p.velocity[1] = -p.max_speed
+		return
+	}
+	if p.coordinates[0] > state.player.coord[0] && p.velocity[0] > -p.max_speed {
 		p.velocity[0] -= f32(p.target_follow_delta^)
 	} else if p.coordinates[0] < state.player.coord[0] && p.velocity[1] < p.max_speed {
 		p.velocity[0] += f32(p.target_follow_delta^)
 	}
 	if p.coordinates[1] < state.player.coord[1] && p.velocity[1] < p.max_speed {
 		p.velocity[1] += f32(p.target_follow_delta^)
-	} else if p.coordinates[1] > state.player.coord[1] && p.velocity[1] < -p.max_speed {
+	} else if p.coordinates[1] > state.player.coord[1] && p.velocity[1] > -p.max_speed {
 		p.velocity[1] -= f32(p.target_follow_delta^)
 	}
 }

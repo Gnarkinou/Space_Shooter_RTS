@@ -57,18 +57,20 @@ main :: proc() {
 	}
 
 	game_state.player.secondary_weapon = Weapon {
-		name             = "small_missile",
-		speed            = 200,
-		acceleration     = 1.5,
-		dmg_type         = "explosion",
-		dmg              = 2,
-		number_ammo      = 5,
-		life             = 1,
-		fire_rate        = 70,
-		waiting_time     = 0,
-		size_projectiles = {10, 20},
-		follow_target    = true,
-		firing           = false,
+		name                = "small_missile",
+		speed               = 200,
+		max_speed           = 300,
+		acceleration        = 1.5,
+		dmg_type            = "explosion",
+		dmg                 = 2,
+		number_ammo         = 5,
+		life                = 1,
+		target_follow_delta = 20,
+		fire_rate           = 70,
+		waiting_time        = 0,
+		size_projectiles    = {10, 20},
+		follow_target       = true,
+		firing              = false,
 	}
 
 	game_state.world = World {
@@ -186,4 +188,3 @@ render :: proc(state: ^Game_State, dt: f32) {
 	render_ennemy_ships(state, dt)
 	sdl.RenderPresent(state.render)
 }
-mo

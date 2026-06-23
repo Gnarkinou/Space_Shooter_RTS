@@ -10,6 +10,7 @@ basic_weapon := Weapon {
 	acceleration     = 1.0,
 	dmg_type         = "laser",
 	dmg              = 1,
+	life             = 1,
 	fire_rate        = 50,
 	size_projectiles = {5, 10},
 	waiting_time     = 0,
