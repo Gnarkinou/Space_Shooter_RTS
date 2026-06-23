@@ -28,7 +28,6 @@ Weapon :: struct {
 	speed:                                f32,
 	max_speed:                            f32,
 	acceleration:                         f32,
-	alive:                                bool,
 	life:                                 int,
 	dmg_type:                             string,
 	dmg:                                  int,
@@ -59,18 +58,18 @@ Projectile :: struct {
 }
 
 Ennemy_ship :: struct {
-	name:                             string,
-	coordinates:                      [2]f32,
-	velocity:                         [2]int,
-	max_speed:                        int,
-	acceleration:                     int,
-	life:                             int,
-	max_life:                         int,
-	shield:                           int,
-	pattern:                          string,
-	alive:                            bool,
-	primary_weapon, secondary_weapon: Weapon,
-	size:                             [2]int,
+	name:                                                 string,
+	coordinates:                                          [2]f32,
+	velocity:                                             [2]int,
+	max_speed:                                            [2]int, // This is necessary for the special moves
+	acceleration:                                         int,
+	life:                                                 int,
+	max_life:                                             int,
+	shield, max_shield, reload_shield, max_reload_shield: int,
+	pattern:                                              string,
+	alive:                                                bool,
+	primary_weapon, secondary_weapon:                     Weapon,
+	size:                                                 [2]int,
 }
 
 /*
@@ -139,6 +138,30 @@ update_level :: proc(state: ^Game_State, dt: f32) {
 			   ennemy.coordinates[0] + f32(ennemy.size[0]) >= SCREEN_WIDTH {
 				ennemy.velocity[0] = -ennemy.velocity[0]
 			}
+		case "dance":
+			if ennemy.coordinates[0] <= 2 * f32(ennemy.size[0]) {
+				if ennemy.velocity[0] >= ennemy.max_speed[0] {
+					ennemy.velocity[0] += ennemy.max_speed[0] / 4
+				}
+				if ennemy.velocity[1] <= ennemy.max_speed[1] {
+					ennemy.velocity[1] += ennemy.max_speed[1] / 4
+				}
+			} else if ennemy.coordinates[0] >= SCREEN_WIDTH - f32(ennemy.size[0]) {
+				if ennemy.velocity[0] >= -ennemy.max_speed[0] {
+					ennemy.velocity[0] -= ennemy.max_speed[0] / 4
+				}
+				if ennemy.velocity[1] <= ennemy.max_speed[1] {
+					ennemy.velocity[1] += ennemy.max_speed[1] / 4
+				}
+			} else if ennemy.velocity[1] <= 0 {
+				ennemy.velocity[1] = 0
+			} else {
+				ennemy.velocity[1] -= ennemy.max_speed[1] / 4
+			}
+			if ennemy.velocity[0] >= ennemy.max_speed[0] do ennemy.velocity[0] = ennemy.max_speed[0]
+			if ennemy.velocity[0] <= -ennemy.max_speed[0] do ennemy.velocity[0] = -ennemy.max_speed[0]
+			if ennemy.velocity[1] >= ennemy.max_speed[1] do ennemy.velocity[1] = ennemy.max_speed[1]
+			if ennemy.velocity[1] <= -ennemy.max_speed[1] do ennemy.velocity[1] = -ennemy.max_speed[1]
 		}
 
 		if ennemy.primary_weapon.firing &&
@@ -152,7 +175,7 @@ update_level :: proc(state: ^Game_State, dt: f32) {
 			p.speed = int(ennemy.primary_weapon.speed)
 			p.acceleration = ennemy.primary_weapon.acceleration
 			p.alive = true
-			p.life = 1
+			p.life = ennemy.primary_weapon.life
 			p.dmg = &ennemy.primary_weapon.dmg
 			p.size = ennemy.primary_weapon.size_projectiles
 			p.follow_target = ennemy.primary_weapon.follow_target
@@ -173,12 +196,22 @@ update_level :: proc(state: ^Game_State, dt: f32) {
 	update_level1(state)
 }
 
-update_player_status :: proc(state: ^Game_State, dt: f32) {
+update_player_status :: proc(state: ^Game_State) {
+	if state.player.max_shield == 0 do return
 	if state.player.shield < state.player.max_shield && state.player.reload_shield <= 0 {
 		state.player.shield += 1
 		state.player.reload_shield = state.player.max_reload_shield
 		fmt.println("Shield regenerated to:", state.player.shield)
 	} else if state.player.reload_shield > 0 do state.player.reload_shield -= 1
+}
+
+update_enemy_status :: proc(enemy: ^Ennemy_ship) {
+	fmt.println("Function to be implemented")
+	if enemy.max_shield == 0 do return
+	if enemy.shield < enemy.max_shield && enemy.reload_shield <= 0 {
+		enemy.reload_shield = enemy.max_reload_shield
+		fmt.println("Enemy shield reloaded to: ", enemy.shield)
+	} else if enemy.reload_shield > 0 do enemy.reload_shield -= 1
 }
 
 update_projectiles :: proc(state: ^Game_State, dt: f32) {
@@ -252,8 +285,6 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 				else do state.player.shield -= other_projectile.dmg^
 				other_projectile.life = 0
 				fmt.println("enemy_projectile-player collision detected !!!")
-				fmt.println("player life:", state.player.life)
-				fmt.println("Shield strengh:", state.player.shield)
 			}
 		}
 
@@ -307,8 +338,8 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 		p.velocity[0] = state.player.primary_weapon.speed
 		p.speed = int(state.player.primary_weapon.speed)
 		p.acceleration = state.player.primary_weapon.acceleration
-		p.alive = true
 		p.life = state.player.primary_weapon.life
+		p.alive = true
 		p.dmg = &state.player.primary_weapon.dmg
 		p.size = state.player.primary_weapon.size_projectiles
 		p.follow_target = state.player.primary_weapon.follow_target
