@@ -2,13 +2,14 @@ package main
 
 import "core:fmt"
 import "core:math"
+import "core:math/linalg"
 import sdl "vendor:sdl3"
 
 list_projectiles: [dynamic]^Projectile
 list_ennemy_ships: [dynamic]^Ennemy_ship
 
 World :: struct {
-	break_velocity: [2]f32,
+	break_velocity: f32,
 }
 
 Player :: struct {
@@ -77,17 +78,29 @@ BLOCS FONCTIONS -- gestion de la physique pour touts niveaux
    */
 
 render_projectiles :: proc(state: ^Game_State) {
-	sdl.SetRenderDrawColorFloat(state.render, 1.0, 1.0, 0.0, 1.0)
+	//sdl.SetRenderDrawColorFloat(state.render, 1.0, 1.0, 0.0, 1.0)
 	for proj in list_projectiles {
-		if proj.alive {
-			proj_rect := sdl.FRect {
-				x = proj.coordinates[0],
-				y = proj.coordinates[1],
-				w = proj.size[0],
-				h = proj.size[1],
-			}
-			sdl.RenderFillRect(state.render, &proj_rect)
+		if !proj.alive do continue
+		proj_rect := sdl.FRect {
+			x = proj.coordinates[0] - (proj.size[0] / 2.0),
+			y = proj.coordinates[1] - (proj.size[1] / 2.0),
+			w = proj.size[0],
+			h = proj.size[1],
 		}
+		if !proj.follow_target {
+			sdl.SetRenderDrawColorFloat(state.render, 1.0, 1.0, 0.0, 1.0)
+			sdl.RenderFillRect(state.render, &proj_rect)
+		} else {
+			angle_radians := math.atan2(proj.velocity[1], proj.velocity[0])
+			angle_degres := angle_radians * (180.0 / math.PI)
+			center := sdl.FPoint{}
+			center.x = proj.size[0] / 2.0
+			center.y = proj.size[1] / 2.0
+		}
+
+		// Change here when texture
+		sdl.SetRenderDrawColorFloat(state.render, 1.0, 0.0, 0.0, 1.0)
+		sdl.RenderFillRect(state.render, &proj_rect)
 	}
 }
 
@@ -238,9 +251,10 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 			projectile.velocity[1] = f32(projectile.speed)
 		}
 		projectile.coordinates += projectile.velocity * dt
+		projectile.velocity *= state.world.break_velocity * dt
 
-		if projectile.velocity[0] > 0 {
-			projectile.velocity[0] -= state.world.break_velocity[0] * dt
+		/*if projectile.velocity[0] > 0 {
+			projectile.velocity[0] *= state.world.break_velocity * dt
 		} else if projectile.velocity[0] < 0 {
 			projectile.velocity[0] += state.world.break_velocity[0] * dt
 		}
@@ -249,7 +263,7 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 			projectile.velocity[1] -= state.world.break_velocity[1] * dt
 		} else if projectile.velocity[1] < 0 {
 			projectile.velocity[1] += state.world.break_velocity[1] * dt
-		}
+		}*/
 
 		if !projectile.player_friendly && projectile.alive && projectile.life > 0 {
 			x_overlap :=
@@ -418,6 +432,10 @@ projectile_deplacements :: proc(p: ^Projectile, state: ^Game_State) {
 		fmt.println("Error initializing target_follow_delta for the projectile")
 		return
 	}
+
+	target_vector: [2]f32
+	buffer: f32 = 6.0
+
 	if p.player_friendly {
 		target_ship: ^Ennemy_ship = nil
 		for i := 0; i < len(list_ennemy_ships); i += 1 {
@@ -433,34 +451,19 @@ projectile_deplacements :: proc(p: ^Projectile, state: ^Game_State) {
 			return
 		}
 
-		target_center_x := target_ship.coordinates[0] + (f32(target_ship.size[0] / 2.0))
-		target_center_y := target_ship.coordinates[1] + (f32(target_ship.size[1] / 2.0))
-		buffer: f32 = 11.0
-		if p.coordinates[0] > target_center_x + buffer {
-			if p.velocity[0] > -p.max_speed do p.velocity[0] -= f32(p.target_follow_delta^)
-		} else if p.coordinates[0] < target_center_x - buffer {
-			if p.velocity[0] < p.max_speed do p.velocity[0] += f32(p.target_follow_delta^)
-		} //else do p.velocity *= 0.9
+		target_vector = target_ship.coordinates - p.coordinates
 
-		if p.coordinates[1] < target_center_y - buffer {
-			if p.velocity[1] < p.max_speed do p.velocity[1] += f32(p.target_follow_delta^)
-		} else if p.coordinates[1] > target_center_y + buffer {
-			if p.velocity[1] > -p.max_speed do p.velocity[1] -= f32(p.target_follow_delta^)
-		} //else do p.velocity *= 0.9
-		if p.velocity[0] > p.max_speed do p.velocity[0] = p.max_speed
-		if p.velocity[0] < -p.max_speed do p.velocity[0] = -p.max_speed
-		if p.velocity[1] > p.max_speed do p.velocity[1] = p.max_speed
-		if p.velocity[1] < -p.max_speed do p.velocity[1] = -p.max_speed
-		return
+	} else {
+		target_vector = state.player.coord - p.coordinates
 	}
-	if p.coordinates[0] > state.player.coord[0] && p.velocity[0] > -p.max_speed {
-		p.velocity[0] -= f32(p.target_follow_delta^)
-	} else if p.coordinates[0] < state.player.coord[0] && p.velocity[1] < p.max_speed {
-		p.velocity[0] += f32(p.target_follow_delta^)
-	}
-	if p.coordinates[1] < state.player.coord[1] && p.velocity[1] < p.max_speed {
-		p.velocity[1] += f32(p.target_follow_delta^)
-	} else if p.coordinates[1] > state.player.coord[1] && p.velocity[1] > -p.max_speed {
-		p.velocity[1] -= f32(p.target_follow_delta^)
-	}
+	dist := linalg.length(target_vector)
+	if dist < 1.0 do return
+	dir := linalg.normalize(target_vector)
+	perfect_velocity := dir * f32(p.speed)
+	p.velocity = linalg.lerp(p.velocity, perfect_velocity, f32(p.target_follow_delta^))
+
+	if p.velocity[0] > p.max_speed do p.velocity[0] = p.max_speed
+	if p.velocity[0] < -p.max_speed do p.velocity[0] = -p.max_speed
+	if p.velocity[1] > p.max_speed do p.velocity[1] = p.max_speed
+	if p.velocity[1] < -p.max_speed do p.velocity[1] = -p.max_speed
 }
