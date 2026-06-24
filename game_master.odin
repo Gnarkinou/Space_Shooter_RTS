@@ -32,6 +32,7 @@ Weapon :: struct {
 	life:                                 int,
 	dmg_type:                             string,
 	dmg:                                  int,
+	number_canons:                        int,
 	fire_rate, waiting_time, number_ammo: int,
 	target_follow_delta:                  int,
 	size_projectiles:                     [2]f32,
@@ -78,7 +79,6 @@ BLOCS FONCTIONS -- gestion de la physique pour touts niveaux
    */
 
 render_projectiles :: proc(state: ^Game_State) {
-	//sdl.SetRenderDrawColorFloat(state.render, 1.0, 1.0, 0.0, 1.0)
 	for proj in list_projectiles {
 		if !proj.alive do continue
 		proj_rect := sdl.FRect {
@@ -87,20 +87,41 @@ render_projectiles :: proc(state: ^Game_State) {
 			w = proj.size[0],
 			h = proj.size[1],
 		}
+
 		if !proj.follow_target {
 			sdl.SetRenderDrawColorFloat(state.render, 1.0, 1.0, 0.0, 1.0)
 			sdl.RenderFillRect(state.render, &proj_rect)
 		} else {
 			angle_radians := math.atan2(proj.velocity[1], proj.velocity[0])
-			angle_degres := angle_radians * (180.0 / math.PI)
-			center := sdl.FPoint{}
-			center.x = proj.size[0] / 2.0
-			center.y = proj.size[1] / 2.0
-		}
+			angle_radians += (math.PI / 2.0)
+			cos_a := math.cos(angle_radians)
+			sin_a := math.sin(angle_radians)
+			half_w := proj.size[0] / 2.0
+			half_h := proj.size[1] / 2.0
 
-		// Change here when texture
-		sdl.SetRenderDrawColorFloat(state.render, 1.0, 0.0, 0.0, 1.0)
-		sdl.RenderFillRect(state.render, &proj_rect)
+			local_vertices := [4][2]f32 {
+				{-half_w, -half_h}, // Top-Left
+				{half_w, -half_h}, // Top-Right
+				{half_w, half_h}, // Bottom-Right
+				{-half_w, half_h}, // Bottom-Left
+			}
+			vertices := [4]sdl.Vertex{}
+			color := sdl.FColor{1.0, 0.0, 0.0, 1.0}
+
+			for i in 0 ..< 4 {
+				lx := local_vertices[i][0]
+				ly := local_vertices[i][1]
+				rx := lx * cos_a - ly * sin_a
+				ry := lx * sin_a + ly * cos_a
+				v := sdl.Vertex{}
+				v.color = color
+				v.position.x = proj.coordinates[0] + rx
+				v.position.y = proj.coordinates[1] + ry
+				vertices[i] = v
+			}
+			indices := [6]i32{0, 1, 2, 0, 2, 3}
+			sdl.RenderGeometry(state.render, nil, &vertices[0], 4, &indices[0], 6)
+		}
 	}
 }
 
@@ -145,24 +166,16 @@ update_level :: proc(state: ^Game_State, dt: f32) {
 				ennemy.velocity[0] = -ennemy.velocity[0]
 			}
 		case "dance":
-			if ennemy.coordinates[0] <= 2 * f32(ennemy.size[0]) {
-				if ennemy.velocity[0] >= ennemy.max_speed[0] {
-					ennemy.velocity[0] += ennemy.max_speed[0] / 4
-				}
-				if ennemy.velocity[1] <= ennemy.max_speed[1] {
-					ennemy.velocity[1] += ennemy.max_speed[1] / 4
-				}
+			if ennemy.coordinates[0] <= 6 * f32(ennemy.size[0]) {
+				ennemy.velocity[0] += ennemy.max_speed[0] / 8
+				ennemy.velocity[1] += ennemy.max_speed[1] / 2
 			} else if ennemy.coordinates[0] >= SCREEN_WIDTH - f32(ennemy.size[0]) {
-				if ennemy.velocity[0] >= -ennemy.max_speed[0] {
-					ennemy.velocity[0] -= ennemy.max_speed[0] / 4
-				}
-				if ennemy.velocity[1] <= ennemy.max_speed[1] {
-					ennemy.velocity[1] += ennemy.max_speed[1] / 4
-				}
+				ennemy.velocity[0] -= ennemy.max_speed[0] / 8
+				ennemy.velocity[1] += ennemy.max_speed[1] / 2
 			} else if ennemy.velocity[1] <= 0 {
 				ennemy.velocity[1] = 0
 			} else {
-				ennemy.velocity[1] -= ennemy.max_speed[1] / 4
+				ennemy.velocity[1] -= ennemy.max_speed[1] / 100
 			}
 			if ennemy.velocity[0] >= ennemy.max_speed[0] do ennemy.velocity[0] = ennemy.max_speed[0]
 			if ennemy.velocity[0] <= -ennemy.max_speed[0] do ennemy.velocity[0] = -ennemy.max_speed[0]
@@ -187,7 +200,8 @@ update_level :: proc(state: ^Game_State, dt: f32) {
 			p.follow_target = ennemy.primary_weapon.follow_target
 			p.player_friendly = false
 			p.coordinates = {
-				ennemy.coordinates[0] + f32(ennemy.size[0]) / 2,
+				ennemy.coordinates[0] +
+				f32(ennemy.size[0]) / f32(ennemy.primary_weapon.number_canons + 1),
 				ennemy.coordinates[1] + f32(ennemy.size[1]),
 			}
 			ennemy.primary_weapon.waiting_time = ennemy.primary_weapon.fire_rate
@@ -253,18 +267,6 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 		projectile.coordinates += projectile.velocity * dt
 		projectile.velocity *= state.world.break_velocity * dt
 
-		/*if projectile.velocity[0] > 0 {
-			projectile.velocity[0] *= state.world.break_velocity * dt
-		} else if projectile.velocity[0] < 0 {
-			projectile.velocity[0] += state.world.break_velocity[0] * dt
-		}
-
-		if projectile.velocity[1] > 0 {
-			projectile.velocity[1] -= state.world.break_velocity[1] * dt
-		} else if projectile.velocity[1] < 0 {
-			projectile.velocity[1] += state.world.break_velocity[1] * dt
-		}*/
-
 		if !projectile.player_friendly && projectile.alive && projectile.life > 0 {
 			x_overlap :=
 				projectile.coordinates[0] < state.player.coord[0] + state.player.size[0] &&
@@ -301,21 +303,23 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 
 		for enemy_ship in list_ennemy_ships {
 			if !enemy_ship.alive || enemy_ship.life <= 0 do continue
-			x_overlap :=
-				enemy_ship.coordinates[0] < projectile.coordinates[0] + projectile.size[0] &&
-				enemy_ship.coordinates[0] + f32(enemy_ship.size[0]) > projectile.coordinates[0]
-			y_overlap :=
-				enemy_ship.coordinates[1] < projectile.coordinates[1] + projectile.size[1] &&
-				enemy_ship.coordinates[1] + f32(enemy_ship.size[1]) > projectile.coordinates[1]
-			if x_overlap && y_overlap {
-				projectile.life = 0
-				enemy_ship.life -= projectile.dmg^
-				fmt.println("projectile-ennemy ship collision detected !!!")
+			if projectile.player_friendly {
+				x_overlap :=
+					enemy_ship.coordinates[0] < projectile.coordinates[0] + projectile.size[0] &&
+					enemy_ship.coordinates[0] + f32(enemy_ship.size[0]) > projectile.coordinates[0]
+				y_overlap :=
+					enemy_ship.coordinates[1] < projectile.coordinates[1] + projectile.size[1] &&
+					enemy_ship.coordinates[1] + f32(enemy_ship.size[1]) > projectile.coordinates[1]
+				if x_overlap && y_overlap {
+					projectile.life = 0
+					enemy_ship.life -= projectile.dmg^
+					fmt.println("projectile-ennemy ship collision detected !!!")
+				}
 			}
-			x_overlap =
+			x_overlap :=
 				enemy_ship.coordinates[0] < state.player.coord[0] + state.player.size[0] &&
 				enemy_ship.coordinates[0] + f32(enemy_ship.size[0]) > state.player.coord[0]
-			y_overlap =
+			y_overlap :=
 				enemy_ship.coordinates[1] < state.player.coord[1] + state.player.size[1] &&
 				enemy_ship.coordinates[1] + f32(enemy_ship.size[1]) > state.player.coord[1]
 			if x_overlap && y_overlap {
@@ -333,20 +337,37 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 	if state.player.alive &&
 	   state.player.primary_weapon.firing &&
 	   state.player.primary_weapon.waiting_time <= 0 {
-		p := new(Projectile)
-		p.name = state.player.primary_weapon.name
-		p.velocity[1] = state.player.primary_weapon.speed
-		p.velocity[0] = state.player.primary_weapon.speed
-		p.speed = int(state.player.primary_weapon.speed)
-		p.acceleration = state.player.primary_weapon.acceleration
-		p.life = state.player.primary_weapon.life
-		p.alive = true
-		p.dmg = &state.player.primary_weapon.dmg
-		p.size = state.player.primary_weapon.size_projectiles
-		p.follow_target = state.player.primary_weapon.follow_target
-		p.player_friendly = true
-		p.coordinates = {state.player.coord[0] + state.player.size[0] / 2, state.player.coord[1]}
-		append(&list_projectiles, p)
+		for i := 0; i < state.player.primary_weapon.number_canons; i += 1 {
+			fmt.println("fire !")
+			p := new(Projectile)
+			p.name = state.player.primary_weapon.name
+			p.velocity[1] = -state.player.primary_weapon.speed
+			p.velocity[0] = state.player.primary_weapon.speed
+			p.speed = int(state.player.primary_weapon.speed)
+			p.acceleration = state.player.primary_weapon.acceleration
+			p.life = state.player.primary_weapon.life
+			p.alive = true
+			p.dmg = &state.player.primary_weapon.dmg
+			p.size = state.player.primary_weapon.size_projectiles
+			p.follow_target = state.player.primary_weapon.follow_target
+			p.player_friendly = true
+			if state.player.primary_weapon.number_canons == 1 {
+				p.coordinates = {
+					state.player.coord[0] + (state.player.size[0] / 2.0),
+					state.player.coord[1],
+				}
+			} else {
+				p.coordinates = {
+					state.player.coord[0] +
+					f32(i) *
+						(state.player.size[0] /
+								(f32(state.player.primary_weapon.number_canons - 1))),
+					state.player.coord[1],
+				}
+
+			}
+			append(&list_projectiles, p)
+		}
 		state.player.primary_weapon.waiting_time = state.player.primary_weapon.fire_rate
 	}
 	if state.player.secondary_weapon.waiting_time > 0 do state.player.secondary_weapon.waiting_time -= 1
@@ -412,14 +433,16 @@ cleanup_list :: proc() {
 
 aim_shortest_target :: proc(p: ^Projectile) {
 	fmt.println("Acquiring closest target !")
-	dist, dist_min: f32
-	dist_min = 0
+	min_dist_sq: f32 = math.F64_MAX
 	for enemy in list_ennemy_ships {
+		if enemy.coordinates[0] < 0 || enemy.coordinates[0] > f32(SCREEN_WIDTH + enemy.size[0]) do continue
+		if enemy.coordinates[1] < -f32(enemy.size[1]) || enemy.coordinates[1] > f32(SCREEN_HEIGHT) do continue
+
 		dx := enemy.coordinates[0] - p.coordinates[0]
 		dy := enemy.coordinates[1] - p.coordinates[1]
-		dist = math.sqrt(dx * dx + dy * dy)
-		if dist_min == 0 || dist < dist_min {
-			dist_min = dist
+		dist_sq := dx * dx + dy * dy
+		if dist_sq < min_dist_sq {
+			min_dist_sq = dist_sq
 			p.target_ship_id = enemy.id
 			p.target_lost = false
 		}

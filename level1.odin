@@ -11,6 +11,7 @@ basic_weapon := Weapon {
 	dmg_type         = "laser",
 	dmg              = 1,
 	life             = 1,
+	number_canons    = 1,
 	fire_rate        = 50,
 	size_projectiles = {5, 10},
 	waiting_time     = 0,
@@ -41,15 +42,47 @@ update_level1 :: proc(state: ^Game_State) {
 	switch wave_number {
 	case 0:
 		if len(list_ennemy_ships) == 0 {
-			for i := 0; i < 10; i += 1 {
+			for i := 0; i < 3; i += 1 {
 				es := new(Ennemy_ship)
 				es.name = "The basic one"
-				es.coordinates = {SCREEN_WIDTH / 2, -70.0 - 150.0 * f32(i)}
-				es.velocity = {80, 50}
-				es.max_speed = {80, 50}
+				es.coordinates = {SCREEN_WIDTH / 2, -70.0 - 80.0 * f32(i)}
+				es.velocity = {150, 150}
+				es.max_speed = {180, 250}
 				es.acceleration = 1
 				es.life = 1
-				es.pattern = "swipe"
+				es.pattern = "dance"
+				es.max_life = 1
+				es.shield = 0
+				es.alive = true
+				es.size = {40, 70}
+				es.primary_weapon = basic_weapon
+				append(&list_ennemy_ships, es)
+			}
+			for i := 0; i < 3; i += 1 {
+				es := new(Ennemy_ship)
+				es.name = "The basic one"
+				es.coordinates = {(SCREEN_WIDTH / 2) - 100, -70.0 - 80.0 * f32(i)}
+				es.velocity = {150, 150}
+				es.max_speed = {180, 250}
+				es.acceleration = 1
+				es.life = 1
+				es.pattern = "dance"
+				es.max_life = 1
+				es.shield = 0
+				es.alive = true
+				es.size = {40, 70}
+				es.primary_weapon = basic_weapon
+				append(&list_ennemy_ships, es)
+			}
+			for i := 0; i < 3; i += 1 {
+				es := new(Ennemy_ship)
+				es.name = "The basic one"
+				es.coordinates = {(SCREEN_WIDTH / 2) - 200, -70.0 - 80.0 * f32(i)}
+				es.velocity = {150, 150}
+				es.max_speed = {180, 250}
+				es.acceleration = 1
+				es.life = 1
+				es.pattern = "dance"
 				es.max_life = 1
 				es.shield = 0
 				es.alive = true
