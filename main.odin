@@ -65,7 +65,7 @@ main :: proc() {
 		dmg                 = 2,
 		number_ammo         = 5,
 		life                = 1,
-		target_follow_delta = 20,
+		target_follow_delta = 5,
 		fire_rate           = 70,
 		waiting_time        = 0,
 		size_projectiles    = {10, 20},
@@ -74,7 +74,7 @@ main :: proc() {
 	}
 
 	game_state.world = World {
-		break_velocity = {5.0, 5.0},
+		break_velocity = 0.9,
 	}
 
 	game_state.window = sdl.CreateWindow("Odin Space Shooter", SCREEN_WIDTH, SCREEN_HEIGHT, {})
@@ -137,11 +137,14 @@ update :: proc(state: ^Game_State, dt: f32) {
 	}
 
 	if player_in_screen {
+		state.player.velocity *= state.world.break_velocity
+		/*
 		if state.player.velocity[0] > 0.0 do state.player.velocity[0] -= state.world.break_velocity[0]
 		else if state.player.velocity[0] < 0.0 do state.player.velocity[0] += state.world.break_velocity[0]
 
 		if state.player.velocity[1] > 0.0 do state.player.velocity[1] -= state.world.break_velocity[1]
 		else if state.player.velocity[1] < 0.0 do state.player.velocity[1] += state.world.break_velocity[1]
+		*/
 	}
 	// Function call to be at 60FPS update
 	if !state.pause && sdl.GetTicks() % 1000 < 16 do update_player_status(state)
