@@ -93,34 +93,19 @@ render_projectiles :: proc(state: ^Game_State) {
 			sdl.RenderFillRect(state.render, &proj_rect)
 		} else {
 			angle_radians := math.atan2(proj.velocity[1], proj.velocity[0])
-			angle_radians += (math.PI / 2.0)
-			cos_a := math.cos(angle_radians)
-			sin_a := math.sin(angle_radians)
-			half_w := proj.size[0] / 2.0
-			half_h := proj.size[1] / 2.0
-
-			local_vertices := [4][2]f32 {
-				{-half_w, -half_h}, // Top-Left
-				{half_w, -half_h}, // Top-Right
-				{half_w, half_h}, // Bottom-Right
-				{-half_w, half_h}, // Bottom-Left
-			}
-			vertices := [4]sdl.Vertex{}
-			color := sdl.FColor{1.0, 0.0, 0.0, 1.0}
-
-			for i in 0 ..< 4 {
-				lx := local_vertices[i][0]
-				ly := local_vertices[i][1]
-				rx := lx * cos_a - ly * sin_a
-				ry := lx * sin_a + ly * cos_a
-				v := sdl.Vertex{}
-				v.color = color
-				v.position.x = proj.coordinates[0] + rx
-				v.position.y = proj.coordinates[1] + ry
-				vertices[i] = v
-			}
-			indices := [6]i32{0, 1, 2, 0, 2, 3}
-			sdl.RenderGeometry(state.render, nil, &vertices[0], 4, &indices[0], 6)
+			angle_radians += math.PI / 2.0
+			angle_degres := angle_radians * (180.0 / math.PI)
+			sdl.SetTextureColorModFloat(state.white_texture, 1.0, 0.0, 0.0)
+			sdl.SetTextureAlphaModFloat(state.white_texture, 1.0)
+			sdl.RenderTextureRotated(
+				state.render,
+				state.white_texture,
+				nil,
+				&proj_rect,
+				f64(angle_degres),
+				nil,
+				.NONE,
+			)
 		}
 	}
 }
