@@ -323,7 +323,6 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 	   state.player.primary_weapon.firing &&
 	   state.player.primary_weapon.waiting_time <= 0 {
 		for i := 0; i < state.player.primary_weapon.number_canons; i += 1 {
-			fmt.println("fire !")
 			p := new(Projectile)
 			p.name = state.player.primary_weapon.name
 			p.velocity[1] = -state.player.primary_weapon.speed
