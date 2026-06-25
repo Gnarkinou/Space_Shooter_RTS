@@ -13,6 +13,7 @@ Game_State :: struct {
 	map_level:      int,
 	player:         Player,
 	world:          World,
+	white_texture:  ^sdl.Texture,
 }
 
 main :: proc() {
@@ -94,6 +95,21 @@ main :: proc() {
 		return
 	}
 	defer sdl.DestroyRenderer(game_state.render)
+
+	white_pixel: u32 = 0xFFFFFFFF
+	surface := sdl.CreateSurfaceFrom(1, 1, .RGBA8888, &white_pixel, 4)
+	if surface == nil {
+		fmt.println("Error creating Surface", sdl.GetError())
+		return
+	}
+	defer sdl.DestroySurface(surface)
+
+	game_state.white_texture = sdl.CreateTextureFromSurface(game_state.render, surface)
+	if game_state.white_texture == nil {
+		fmt.println("SDL Texture failed", sdl.GetError())
+		return
+	}
+	defer sdl.DestroyTexture(game_state.white_texture)
 
 	last_time := sdl.GetTicks()
 	init_level1(&game_state)
