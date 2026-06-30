@@ -24,8 +24,9 @@ main :: proc() {
 	defer sdl.Quit()
 
 	game_state := Game_State {
-		running = true,
-		pause   = false,
+		map_level = 1,
+		running   = true,
+		pause     = false,
 	}
 
 	game_state.player = Player {
@@ -48,7 +49,7 @@ main :: proc() {
 		acceleration     = 1.0,
 		dmg_type         = "laser",
 		dmg              = 1,
-		fire_rate        = 30,
+		fire_rate        = 70,
 		number_canons    = 2,
 		life             = 1,
 		size_projectiles = {5, 10},
@@ -75,7 +76,7 @@ main :: proc() {
 	}
 
 	game_state.world = World {
-		break_velocity = 0.99,
+		break_velocity = 0.9,
 	}
 
 	game_state.window = sdl.CreateWindow("Odin Space Shooter", SCREEN_WIDTH, SCREEN_HEIGHT, {})
@@ -198,6 +199,5 @@ render :: proc(state: ^Game_State, dt: f32) {
 	render_projectiles(state)
 	sdl.SetRenderDrawColorFloat(state.render, 1.0, 0.8, 1.0, 1.0)
 	render_ennemy_ships(state, dt)
-	render_gui(state)
 	sdl.RenderPresent(state.render)
 }
