@@ -122,11 +122,13 @@ render_player :: proc(state: ^Game_State) {
 		sdl.SetRenderDrawColorFloat(state.render, 0.0, 0.8, 1.0, 1.0)
 		sdl.RenderFillRect(state.render, &player_rect)
 	}
+	if state.player.shield > 0 do display_shield(state)
 }
 
 render_ennemy_ships :: proc(state: ^Game_State, dt: f32) {
 	for ennemy in list_ennemy_ships {
-		if ennemy.alive {
+		if ennemy.alive && ennemy.coordinates[1] < -f32(ennemy.size[1]) ||
+		   ennemy.alive && ennemy.coordinates[1] < SCREEN_HEIGHT {
 			ennemy_rect := sdl.FRect {
 				x = ennemy.coordinates[0],
 				y = ennemy.coordinates[1],
@@ -135,6 +137,7 @@ render_ennemy_ships :: proc(state: ^Game_State, dt: f32) {
 			}
 			sdl.SetRenderDrawColorFloat(state.render, 0.0, 0.8, 1.0, 1.0)
 			sdl.RenderFillRect(state.render, &ennemy_rect)
+			if ennemy.life < ennemy.max_life && ennemy.life > 0 do display_ennemy_life(state.render, ennemy)
 		}
 	}
 }
@@ -173,57 +176,76 @@ update_level :: proc(state: ^Game_State, dt: f32) {
 			else if ennemy.secondary_weapon.firing do ennemy.secondary_weapon.firing = false
 		}
 		if ennemy.velocity[0] >= ennemy.max_speed[0] do ennemy.velocity[0] = ennemy.max_speed[0]
-		if ennemy.velocity[0] <= -ennemy.max_speed[0] do ennemy.velocity[0] = -ennemy.max_speed[0]
+		else if ennemy.velocity[0] <= -ennemy.max_speed[0] do ennemy.velocity[0] = -ennemy.max_speed[0]
 		if ennemy.velocity[1] >= ennemy.max_speed[1] do ennemy.velocity[1] = ennemy.max_speed[1]
-		if ennemy.velocity[1] <= -ennemy.max_speed[1] do ennemy.velocity[1] = -ennemy.max_speed[1]
+		else if ennemy.velocity[1] <= -ennemy.max_speed[1] do ennemy.velocity[1] = -ennemy.max_speed[1]
 
 		if ennemy.primary_weapon.firing &&
 		   ennemy.primary_weapon.waiting_time <= 0 &&
 		   ennemy.coordinates[1] >= 0 {
-			p := new(Projectile)
-			p.name = ennemy.primary_weapon.name
-			p.speed = int(ennemy.primary_weapon.speed)
-			p.velocity[0] = ennemy.primary_weapon.speed
-			p.velocity[1] = ennemy.primary_weapon.speed
-			p.speed = int(ennemy.primary_weapon.speed)
-			p.acceleration = ennemy.primary_weapon.acceleration
-			p.alive = true
-			p.life = ennemy.primary_weapon.life
-			p.dmg = &ennemy.primary_weapon.dmg
-			p.size = ennemy.primary_weapon.size_projectiles
-			p.follow_target = ennemy.primary_weapon.follow_target
-			p.player_friendly = false
-			p.coordinates = {
-				ennemy.coordinates[0] +
-				f32(ennemy.size[0]) / f32(ennemy.primary_weapon.number_canons + 1),
-				ennemy.coordinates[1] + f32(ennemy.size[1]),
+			for i := 0; i < state.player.primary_weapon.number_canons; i += 1 {
+				p := new(Projectile)
+				p.name = ennemy.primary_weapon.name
+				p.speed = int(ennemy.primary_weapon.speed)
+				p.velocity[0] = ennemy.primary_weapon.speed
+				p.velocity[1] = ennemy.primary_weapon.speed
+				p.speed = int(ennemy.primary_weapon.speed)
+				p.acceleration = ennemy.primary_weapon.acceleration
+				p.alive = true
+				p.life = ennemy.primary_weapon.life
+				p.dmg = &ennemy.primary_weapon.dmg
+				p.size = ennemy.primary_weapon.size_projectiles
+				p.follow_target = ennemy.primary_weapon.follow_target
+				p.player_friendly = false
+				if ennemy.primary_weapon.number_canons == 1 {
+					p.coordinates = {
+						ennemy.coordinates[0] + f32(ennemy.size[0] / 2.0),
+						ennemy.coordinates[1] + f32(ennemy.size[1]),
+					}
+				} else {
+					p.coordinates = {
+						ennemy.coordinates[0] +
+						f32(i * ennemy.size[0] / ennemy.primary_weapon.number_canons - 1),
+						ennemy.coordinates[1] + f32(ennemy.size[1]),
+					}
+				}
+				ennemy.primary_weapon.waiting_time = ennemy.primary_weapon.fire_rate
+				append(&list_projectiles, p)
 			}
-			ennemy.primary_weapon.waiting_time = ennemy.primary_weapon.fire_rate
-			append(&list_projectiles, p)
 		}
 		if ennemy.secondary_weapon.firing &&
 		   ennemy.secondary_weapon.waiting_time <= 0 &&
 		   ennemy.coordinates[1] >= 0 {
-			p := new(Projectile)
-			p.name = ennemy.secondary_weapon.name
-			p.speed = int(ennemy.secondary_weapon.speed)
-			p.velocity[0] = ennemy.secondary_weapon.speed
-			p.velocity[1] = ennemy.secondary_weapon.speed
-			p.speed = int(ennemy.secondary_weapon.speed)
-			p.acceleration = ennemy.secondary_weapon.acceleration
-			p.alive = true
-			p.life = ennemy.secondary_weapon.life
-			p.dmg = &ennemy.secondary_weapon.dmg
-			p.size = ennemy.secondary_weapon.size_projectiles
-			p.follow_target = ennemy.secondary_weapon.follow_target
-			p.player_friendly = false
-			p.coordinates = {
-				ennemy.coordinates[0] +
-				f32(ennemy.size[0]) / f32(ennemy.secondary_weapon.number_canons + 1),
-				ennemy.coordinates[1] + f32(ennemy.size[1]),
+			for i := 0; i < state.player.primary_weapon.number_canons; i += 1 {
+				fmt.println("Ennmy secondary firing now !!")
+				p := new(Projectile)
+				p.name = ennemy.secondary_weapon.name
+				p.speed = int(ennemy.secondary_weapon.speed)
+				p.velocity[0] = ennemy.secondary_weapon.speed
+				p.velocity[1] = ennemy.secondary_weapon.speed
+				p.speed = int(ennemy.secondary_weapon.speed)
+				p.acceleration = ennemy.secondary_weapon.acceleration
+				p.alive = true
+				p.life = ennemy.secondary_weapon.life
+				p.dmg = &ennemy.secondary_weapon.dmg
+				p.size = ennemy.secondary_weapon.size_projectiles
+				p.follow_target = ennemy.secondary_weapon.follow_target
+				p.player_friendly = false
+				if ennemy.secondary_weapon.number_canons == 1 {
+					p.coordinates = {
+						ennemy.coordinates[0] + f32(ennemy.size[0] / 2.0),
+						ennemy.coordinates[1] + f32(ennemy.size[1]),
+					}
+				} else {
+					p.coordinates = {
+						ennemy.coordinates[0] +
+						f32(i * ennemy.size[0] / ennemy.secondary_weapon.number_canons - 1),
+						ennemy.coordinates[1] + f32(ennemy.size[1]),
+					}
+				}
+				ennemy.secondary_weapon.waiting_time = ennemy.secondary_weapon.fire_rate
+				append(&list_projectiles, p)
 			}
-			ennemy.secondary_weapon.waiting_time = ennemy.secondary_weapon.fire_rate
-			append(&list_projectiles, p)
 			ennemy.secondary_weapon.firing = false
 		}
 		ennemy.coordinates[0] += f32(ennemy.velocity[0]) * dt
@@ -235,6 +257,8 @@ update_level :: proc(state: ^Game_State, dt: f32) {
 }
 
 update_player_status :: proc(state: ^Game_State) {
+	fmt.println("The player shield reload is: ", state.player.reload_shield)
+	fmt.println("The player max shield reload is: ", state.player.max_reload_shield)
 	if state.player.max_shield == 0 do return
 	if state.player.shield < state.player.max_shield && state.player.reload_shield <= 0 {
 		state.player.shield += 1
@@ -357,7 +381,7 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 	   state.player.primary_weapon.firing &&
 	   state.player.primary_weapon.waiting_time <= 0 {
 		for i := 0; i < state.player.primary_weapon.number_canons; i += 1 {
-			fmt.println("fire !")
+			//fmt.println("fire !")
 			p := new(Projectile)
 			p.name = state.player.primary_weapon.name
 			p.velocity[1] = -state.player.primary_weapon.speed
@@ -383,7 +407,6 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 								(f32(state.player.primary_weapon.number_canons - 1))),
 					state.player.coord[1],
 				}
-
 			}
 			append(&list_projectiles, p)
 		}

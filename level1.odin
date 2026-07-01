@@ -3,7 +3,7 @@ package main
 import "core:fmt"
 //import sdl "vendor:sdl3"
 
-wave_number: int = 0
+wave_number: int = 3
 wave_trigger: int = 0
 
 basic_boss_weapon := Weapon {
@@ -46,7 +46,7 @@ init_big_boss_level1 :: proc(state: ^Game_State) {
 	boss_level_1.acceleration = 1
 	boss_level_1.life = 20
 	boss_level_1.pattern = "Trail Player"
-	boss_level_1.max_life = 1
+	boss_level_1.max_life = 20
 	boss_level_1.shield = 0
 	boss_level_1.max_shield = 0
 	boss_level_1.max_reload_shield = 0
@@ -55,6 +55,7 @@ init_big_boss_level1 :: proc(state: ^Game_State) {
 	boss_level_1.primary_weapon = basic_boss_weapon
 	boss_level_1.secondary_weapon = basic_boss_weapon
 	boss_level_1.secondary_weapon.fire_rate = 70
+	boss_level_1.secondary_weapon.number_canons = 5
 	boss_level_1.secondary_weapon.firing = false
 	append(&list_ennemy_ships, boss_level_1)
 }
@@ -82,7 +83,7 @@ init_level1 :: proc(state: ^Game_State) {
 update_level1 :: proc(state: ^Game_State) {
 	switch wave_number {
 	case 0:
-		fmt.println("First wave spawning")
+		//fmt.println("First wave spawning")
 		if len(list_ennemy_ships) == 0 {
 			for i := 0; i < 2; i += 1 {
 				es := new(Ennemy_ship)
@@ -155,9 +156,9 @@ update_level1 :: proc(state: ^Game_State) {
 		if len(list_ennemy_ships) == 0 {
 			fmt.println("Condition to end the first wave is met, GG !!")
 			wave_number += 1
+			fmt.println("Second wave coming !")
 		}
 	case 2:
-		fmt.println("Second wave coming !")
 		if wave_trigger == 1 && len(list_ennemy_ships) == 0 {
 			fmt.println("Conditions to end wave 2 met ! GG !")
 			wave_number += 1
@@ -168,7 +169,7 @@ update_level1 :: proc(state: ^Game_State) {
 			for i := 0; i < 3; i += 1 {
 				es := new(Ennemy_ship)
 				es.name = "The basic one"
-				es.coordinates = {SCREEN_WIDTH / 2, -500.0 - 80.0 * f32(i)}
+				es.coordinates = {SCREEN_WIDTH / 2, -70.0 - 80.0 * f32(i)}
 				es.velocity = {150, 150}
 				es.max_speed = {180, 250}
 				es.acceleration = 1
@@ -236,5 +237,7 @@ update_level1 :: proc(state: ^Game_State) {
 		}
 	case 3:
 		fmt.println("Spwaning the Big Boss now !")
+		init_big_boss_level1(state)
+		wave_number += 1
 	}
 }

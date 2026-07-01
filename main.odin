@@ -14,6 +14,7 @@ Game_State :: struct {
 	player:         Player,
 	world:          World,
 	white_texture:  ^sdl.Texture,
+	status_time:    f32,
 }
 
 main :: proc() {
@@ -24,23 +25,25 @@ main :: proc() {
 	defer sdl.Quit()
 
 	game_state := Game_State {
-		map_level = 1,
-		running   = true,
-		pause     = false,
+		map_level   = 1,
+		running     = true,
+		pause       = false,
+		status_time = 0.0,
 	}
 
 	game_state.player = Player {
-		coord           = {500.0, 500.0},
-		size            = {30.0, 50.0},
-		velocity        = {0.0, 0.0},
-		max_speed       = 700.0,
-		increment_speed = 250.0,
-		life            = 10,
-		max_life        = 10,
-		shield          = 1,
-		max_shield      = 1,
-		reload_shield   = 20,
-		alive           = true,
+		coord             = {500.0, 500.0},
+		size              = {30.0, 50.0},
+		velocity          = {0.0, 0.0},
+		max_speed         = 700.0,
+		increment_speed   = 250.0,
+		life              = 10,
+		max_life          = 10,
+		shield            = 1,
+		max_shield        = 2,
+		reload_shield     = 5,
+		max_reload_shield = 5,
+		alive             = true,
 	}
 
 	game_state.player.primary_weapon = Weapon {
@@ -49,7 +52,7 @@ main :: proc() {
 		acceleration     = 1.0,
 		dmg_type         = "laser",
 		dmg              = 1,
-		fire_rate        = 70,
+		fire_rate        = 30,
 		number_canons    = 2,
 		life             = 1,
 		size_projectiles = {5, 10},
@@ -76,7 +79,7 @@ main :: proc() {
 	}
 
 	game_state.world = World {
-		break_velocity = 0.9,
+		break_velocity = 0.99,
 	}
 
 	game_state.window = sdl.CreateWindow("Odin Space Shooter", SCREEN_WIDTH, SCREEN_HEIGHT, {})
@@ -157,7 +160,11 @@ update :: proc(state: ^Game_State, dt: f32) {
 		state.player.velocity *= state.world.break_velocity
 	}
 	// Function call to be at 60FPS update
-	if !state.pause && sdl.GetTicks() % 1000 < 16 do update_player_status(state)
+	if !state.pause do state.status_time += dt
+	if state.status_time >= 1.0 {
+		update_player_status(state)
+		state.status_time = 0.0
+	}
 	update_projectiles(state, dt)
 	update_level(state, dt)
 }
@@ -199,5 +206,6 @@ render :: proc(state: ^Game_State, dt: f32) {
 	render_projectiles(state)
 	sdl.SetRenderDrawColorFloat(state.render, 1.0, 0.8, 1.0, 1.0)
 	render_ennemy_ships(state, dt)
+	render_gui(state)
 	sdl.RenderPresent(state.render)
 }
