@@ -116,10 +116,11 @@ main :: proc() {
 
 	last_time := sdl.GetTicks()
 	init_level1(&game_state)
+	dt: f32
 
 	for game_state.running {
 		current_time := sdl.GetTicks()
-		dt := f32(current_time - last_time) / 1000.0
+		dt = f32(current_time - last_time) / 1000.0
 		last_time = current_time
 		handle_events(&game_state)
 		update(&game_state, dt)
@@ -159,7 +160,8 @@ update :: proc(state: ^Game_State, dt: f32) {
 	if player_in_screen {
 		state.player.velocity *= state.world.break_velocity
 	}
-	// Function call to be at 60FPS update
+
+	// This is to call the function once every second
 	if !state.pause do state.status_time += dt
 	if state.status_time >= 1.0 {
 		update_player_status(state)

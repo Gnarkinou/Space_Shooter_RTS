@@ -319,7 +319,10 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 				projectile.coordinates[1] + projectile.size[1] > state.player.coord[1]
 			if x_overlap && y_overlap {
 				if state.player.shield <= 0 do state.player.life -= projectile.dmg^
-				else do state.player.shield -= projectile.dmg^
+				else {
+					state.player.shield -= projectile.dmg^
+				}
+				state.player.reload_shield = state.player.max_reload_shield
 				projectile.life = 0
 				fmt.println("enemy_projectile-player collision detected !!!")
 			}
@@ -367,8 +370,10 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 				enemy_ship.coordinates[1] + f32(enemy_ship.size[1]) > state.player.coord[1]
 			if x_overlap && y_overlap {
 				enemy_ship.life = 0
-				if state.player.shield >= 0 do state.player.shield -= 1
-				else do state.player.life -= 1
+				if state.player.shield >= 0 {
+					state.player.shield -= 1
+				} else do state.player.life -= 1
+				state.player.reload_shield = state.player.max_reload_shield
 				fmt.println("ship-ennemy ship collision detected !!!")
 			}
 		}
