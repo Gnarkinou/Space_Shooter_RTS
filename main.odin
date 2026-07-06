@@ -123,7 +123,7 @@ main :: proc() {
 		dt = f32(current_time - last_time) / 1000.0
 		last_time = current_time
 		handle_events(&game_state)
-		update(&game_state, dt)
+		if !game_state.pause do update(&game_state, dt)
 		render(&game_state, dt)
 	}
 }
@@ -181,20 +181,26 @@ handle_events :: proc(state: ^Game_State) {
 			if event.key.scancode == .ESCAPE {
 				state.running = false
 			}
-			if event.key.scancode == .UP {
-				state.player.velocity[1] -= state.player.increment_speed
+			if event.key.scancode == .P {
+				state.pause = !state.pause
 			}
-			if event.key.scancode == .DOWN {
-				state.player.velocity[1] += state.player.increment_speed
-			}
-			if event.key.scancode == .RIGHT {
-				state.player.velocity[0] += state.player.increment_speed
-			}
-			if event.key.scancode == .LEFT {
-				state.player.velocity[0] -= state.player.increment_speed
-			}
-			if event.key.scancode == .SPACE {
-				state.player.secondary_weapon.firing = true
+
+			if !state.pause {
+				if event.key.scancode == .UP {
+					state.player.velocity[1] -= state.player.increment_speed
+				}
+				if event.key.scancode == .DOWN {
+					state.player.velocity[1] += state.player.increment_speed
+				}
+				if event.key.scancode == .RIGHT {
+					state.player.velocity[0] += state.player.increment_speed
+				}
+				if event.key.scancode == .LEFT {
+					state.player.velocity[0] -= state.player.increment_speed
+				}
+				if event.key.scancode == .SPACE {
+					state.player.secondary_weapon.firing = true
+				}
 			}
 		}
 	}
@@ -203,11 +209,15 @@ handle_events :: proc(state: ^Game_State) {
 render :: proc(state: ^Game_State, dt: f32) {
 	sdl.SetRenderDrawColorFloat(state.render, 0.05, 0.05, 0.08, 1.0)
 	sdl.RenderClear(state.render)
-	render_player(state)
-	sdl.SetRenderDrawColorFloat(state.render, 1.0, 1.0, 0.0, 1.0)
-	render_projectiles(state)
-	sdl.SetRenderDrawColorFloat(state.render, 1.0, 0.8, 1.0, 1.0)
-	render_ennemy_ships(state, dt)
-	render_gui(state)
+	if !state.pause {
+		render_player(state)
+		sdl.SetRenderDrawColorFloat(state.render, 1.0, 1.0, 0.0, 1.0)
+		render_projectiles(state)
+		sdl.SetRenderDrawColorFloat(state.render, 1.0, 0.8, 1.0, 1.0)
+		render_ennemy_ships(state, dt)
+		render_gui(state)
+	} else {
+		render_pause_menu(state)
+	}
 	sdl.RenderPresent(state.render)
 }
