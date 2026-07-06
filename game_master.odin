@@ -76,7 +76,7 @@ Ennemy_ship :: struct {
 }
 
 /*
-BLOCS FONCTIONS -- gestion de la physique pour touts niveaux
+BLOCS FONCTIONS
    */
 
 render_projectiles :: proc(state: ^Game_State) {
@@ -111,8 +111,21 @@ render_projectiles :: proc(state: ^Game_State) {
 	}
 }
 
+render_pause_menu :: proc(state: ^Game_State) {
+	pause_rect := sdl.FRect {
+		x = SCREEN_WIDTH / 10,
+		y = SCREEN_HEIGHT / 10,
+		w = SCREEN_WIDTH * 8 / 10,
+		h = SCREEN_HEIGHT * 8 / 10,
+	}
+	sdl.SetRenderDrawColorFloat(state.render, 0.0, 0.8, 1.0, 1.0)
+	sdl.RenderFillRect(state.render, &pause_rect)
+}
+
 render_player :: proc(state: ^Game_State) {
 	if state.player.alive {
+		// Possibilité de le sortir de la pour le mettre en global
+		// Et avoir les x,y,w,h en pointeur du state.player
 		player_rect := sdl.FRect {
 			x = state.player.coord[0],
 			y = state.player.coord[1],
