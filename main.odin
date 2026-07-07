@@ -63,7 +63,7 @@ main :: proc() {
 
 	game_state.player.secondary_weapon = Weapon {
 		name                = "small_missile",
-		speed               = 200,
+		speed               = 50,
 		max_speed           = 300,
 		acceleration        = 1.5,
 		dmg_type            = "explosion",

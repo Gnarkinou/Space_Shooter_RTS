@@ -306,13 +306,13 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 			if projectile.target_lost && len(list_ennemy_ships) > 0 && projectile.player_friendly {
 				fmt.println("Finding new target")
 				aim_shortest_target(projectile)
-				projectile_deplacements(projectile, state)
-			} else if projectile.target_lost {
-				if projectile.velocity[1] == 0 do projectile.velocity[1] -= f32(projectile.speed)
-
+			} else if projectile.target_lost && projectile.player_friendly {
+				//projectile.velocity[1] -= f32(projectile.speed)
+				//projectile_deplacements(projectile, state)
 			} else {
-				projectile_deplacements(projectile, state)
+				//projectile_deplacements(projectile, state)
 			}
+			projectile_deplacements(projectile, state)
 		} else if projectile.player_friendly {
 			projectile.velocity[0] = 0
 			projectile.velocity[1] = -f32(projectile.speed)
@@ -399,7 +399,6 @@ update_projectiles :: proc(state: ^Game_State, dt: f32) {
 	   state.player.primary_weapon.firing &&
 	   state.player.primary_weapon.waiting_time <= 0 {
 		for i := 0; i < state.player.primary_weapon.number_canons; i += 1 {
-			//fmt.println("fire !")
 			p := new(Projectile)
 			p.name = state.player.primary_weapon.name
 			p.velocity[1] = -state.player.primary_weapon.speed
@@ -493,6 +492,7 @@ cleanup_list :: proc() {
 
 aim_shortest_target :: proc(p: ^Projectile) {
 	fmt.println("Acquiring closest target !")
+	if len(list_ennemy_ships) == 0 do return
 	min_dist_sq: f32 = math.F64_MAX
 	for enemy in list_ennemy_ships {
 		if enemy.coordinates[0] < 0 || enemy.coordinates[0] > f32(SCREEN_WIDTH + enemy.size[0]) do continue
@@ -507,6 +507,7 @@ aim_shortest_target :: proc(p: ^Projectile) {
 			p.target_lost = false
 		}
 	}
+	fmt.println("New target acquired")
 }
 
 projectile_deplacements :: proc(p: ^Projectile, state: ^Game_State) {
@@ -515,36 +516,36 @@ projectile_deplacements :: proc(p: ^Projectile, state: ^Game_State) {
 		fmt.println("Error initializing target_follow_delta for the projectile")
 		return
 	}
-
-	target_vector: [2]f32
-	buffer: f32 = 6.0
-
-	if p.player_friendly {
-		target_ship: ^Ennemy_ship = nil
-		for i := 0; i < len(list_ennemy_ships); i += 1 {
-			if list_ennemy_ships[i].id == p.target_ship_id {
-				target_ship = list_ennemy_ships[i]
-				break
+	if !p.target_lost {
+		target_vector: [2]f32
+		buffer: f32 = 6.0
+		if p.player_friendly {
+			target_ship: ^Ennemy_ship = nil
+			for i := 0; i < len(list_ennemy_ships); i += 1 {
+				if list_ennemy_ships[i].id == p.target_ship_id {
+					target_ship = list_ennemy_ships[i]
+					break
+				}
 			}
+
+			if target_ship == nil || !target_ship.alive || target_ship.life < 0 {
+				p.target_lost = true
+				fmt.println("target lost !")
+				return
+			}
+
+			target_vector = target_ship.coordinates - p.coordinates
+		} else {
+			target_vector = state.player.coord - p.coordinates
 		}
-
-		if target_ship == nil || !target_ship.alive || target_ship.life < 0 {
-			p.target_lost = true
-			fmt.println("target lost !")
-			return
-		}
-
-		target_vector = target_ship.coordinates - p.coordinates
-
+		dist := linalg.length(target_vector)
+		if dist < 1.0 do return
+		dir := linalg.normalize(target_vector)
+		perfect_velocity := dir * f32(p.speed)
+		p.velocity = linalg.lerp(p.velocity, perfect_velocity, f32(p.target_follow_delta^))
 	} else {
-		target_vector = state.player.coord - p.coordinates
+		p.velocity[1] -= f32(p.speed)
 	}
-	dist := linalg.length(target_vector)
-	if dist < 1.0 do return
-	dir := linalg.normalize(target_vector)
-	perfect_velocity := dir * f32(p.speed)
-	p.velocity = linalg.lerp(p.velocity, perfect_velocity, f32(p.target_follow_delta^))
-
 	if p.velocity[0] > p.max_speed do p.velocity[0] = p.max_speed
 	if p.velocity[0] < -p.max_speed do p.velocity[0] = -p.max_speed
 	if p.velocity[1] > p.max_speed do p.velocity[1] = p.max_speed
